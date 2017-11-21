@@ -44,7 +44,7 @@ public class RsaEncrypter {
         byte[] result = EMPTY_STRING.getBytes();
         try {
             result =  encryptCipher.doFinal(imageData);
-        } catch (IllegalBlockSizeException | BadPaddingException e) {
+        } catch (GeneralSecurityException e) {
             System.out.println("Cannot encrypt message [" + new String(imageData) + "], returning empty; error: " + e.getMessage());
         }
         
