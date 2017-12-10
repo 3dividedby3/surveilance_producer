@@ -26,7 +26,7 @@ import com.fasterxml.jackson.databind.ObjectWriter;
 import surveilance.fish.model.DataBrick;
 
 /**
- * It is the job of the producer to encode the data to base 64 before sending it to the consumer
+ * It is the job of the producer to encode the image data to base 64 before sending it to the consumer
  */
 public class ImageProducer {
     
@@ -40,12 +40,16 @@ public class ImageProducer {
     
     private final RsaEncrypter rsaEncrypter;
     private final AesEncrypter aesEncrypter;
+    private final AesUtil aesUtil;
+    
     private final ObjectWriter objectWriter;
     private final CloseableHttpClient httpClient;
     
-    public ImageProducer(RsaEncrypter rsaEncrypter, AesEncrypter aesEncrypter) {
+    public ImageProducer(RsaEncrypter rsaEncrypter, AesEncrypter aesEncrypter, AesUtil aesUtil) {
         this.rsaEncrypter = rsaEncrypter;
         this.aesEncrypter = aesEncrypter;
+        this.aesUtil = aesUtil;
+        
         objectWriter = new ObjectMapper().writer().withDefaultPrettyPrinter();
         
         RequestConfig requestConfig = RequestConfig.custom()
@@ -55,6 +59,7 @@ public class ImageProducer {
         httpClient = HttpClientBuilder.create().setDefaultRequestConfig(requestConfig).build();
         
         System.out.println("Application started from: " + BASE_PATH);
+        System.out.println("Reading images from from: " + PATH_TO_IMAGES_FOLDER);
         System.out.println("Sending data to: " + CONSUMER_URL);
     }
 
@@ -69,7 +74,7 @@ public class ImageProducer {
         while(true) {
             byte[] imageData = null;
             try {
-                imageData = getImageData();
+                imageData = getNewestImageData();
                 if (imageData != null) {
                     String dataBrickJson = objectWriter.writeValueAsString(createDataBrick(imageData));
                     System.out.println("Sending data to consumer: " + dataBrickJson);
@@ -89,7 +94,7 @@ public class ImageProducer {
     
     private DataBrick createDataBrick(byte[] payload) {
         DataBrick dataBrick = new DataBrick();
-        byte[] key = aesEncrypter.createAesKey();
+        byte[] key = aesUtil.createAesKey();
         dataBrick.setAesKey(rsaEncrypter.encryptAndEncode(key));
         dataBrick.setPayload(aesEncrypter.encryptAndEncode(payload, key));
         
@@ -114,8 +119,8 @@ public class ImageProducer {
      * @return base 64 encoded image data
      * @throws IOException 
      */
-    private byte[] getImageData() throws IOException {
-        File newestFile = getNewestFile();
+    private byte[] getNewestImageData() throws IOException {
+        File newestFile = getNewestFile(PATH_TO_IMAGES_FOLDER);
         if (newestFile == null) {
             System.out.println("No file found");
             return null;
@@ -126,9 +131,9 @@ public class ImageProducer {
         return BASE64_ENCODER.encode(rawData);
     }
 
-    private File getNewestFile() throws IOException {
+    private File getNewestFile(Path pathToFolder) throws IOException {
         File newestFile = null;
-        try (Stream<Path> pathList = Files.list(PATH_TO_IMAGES_FOLDER)) {
+        try (Stream<Path> pathList = Files.list(pathToFolder)) {
             for (Iterator<Path> iterator = pathList.iterator(); iterator.hasNext();) {
                 Path currentPath = iterator.next();
                 if (Files.isRegularFile(currentPath)) {
