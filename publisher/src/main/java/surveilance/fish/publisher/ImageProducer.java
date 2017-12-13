@@ -8,6 +8,7 @@ import java.nio.file.Paths;
 import java.util.Base64;
 import java.util.Base64.Encoder;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.stream.Stream;
 
 import org.apache.http.HttpEntity;
@@ -29,38 +30,49 @@ import surveilance.fish.model.DataBrick;
  * It is the job of the producer to encode the image data to base 64 before sending it to the consumer
  */
 public class ImageProducer {
+    public static final String SEND_IMAGE_DELAY = "send.image.delay";
+    public static final String CONSUMER_URL = "consumer.url";
+    public static final String IMAGES_FOLDER_PATH = "images.folder.path";
+    public static final String CLIENT_TIMEOUT = "client.timeout";
     
-    public static final String CONSUMER_URL = "https://imaage.herokuapp.com/";
-    public static final Path PATH_TO_IMAGES_FOLDER = Paths.get("D:/images/");
-    public static final long DELAY_MS_FOR_PRODUCER = 1000 * 20;
-    public static final int HTTP_CLIENT_TIMEOUT = 1000 * 15;
+    public static final int SECOND = 1000;
     
     private static final Encoder BASE64_ENCODER = Base64.getEncoder();
     private static final Path BASE_PATH = Paths.get(System.getProperty("user.dir"));
-    
+
     private final RsaEncrypter rsaEncrypter;
     private final AesEncrypter aesEncrypter;
     private final AesUtil aesUtil;
     
     private final ObjectWriter objectWriter;
     private final CloseableHttpClient httpClient;
+    private final Path pathToImagesFolder;
     
-    public ImageProducer(RsaEncrypter rsaEncrypter, AesEncrypter aesEncrypter, AesUtil aesUtil) {
+    private final int sendImageDelay;
+    private final int clientTimeout;
+    private final String consumerUrl;
+
+    
+    public ImageProducer(Map<String, String> properties, RsaEncrypter rsaEncrypter, AesEncrypter aesEncrypter, AesUtil aesUtil) {
         this.rsaEncrypter = rsaEncrypter;
         this.aesEncrypter = aesEncrypter;
         this.aesUtil = aesUtil;
+        sendImageDelay = SECOND * Integer.valueOf(properties.get(SEND_IMAGE_DELAY));
+        clientTimeout = SECOND * Integer.valueOf(properties.get(CLIENT_TIMEOUT));
+        consumerUrl = properties.get(CONSUMER_URL);
+        pathToImagesFolder = Paths.get(properties.get(IMAGES_FOLDER_PATH));
         
         objectWriter = new ObjectMapper().writer().withDefaultPrettyPrinter();
         
         RequestConfig requestConfig = RequestConfig.custom()
-                .setConnectTimeout(HTTP_CLIENT_TIMEOUT)
-                .setConnectionRequestTimeout(HTTP_CLIENT_TIMEOUT)
+                .setConnectTimeout(clientTimeout)
+                .setConnectionRequestTimeout(clientTimeout)
                 .build();
         httpClient = HttpClientBuilder.create().setDefaultRequestConfig(requestConfig).build();
         
         System.out.println("Application started from: " + BASE_PATH);
-        System.out.println("Reading images from from: " + PATH_TO_IMAGES_FOLDER);
-        System.out.println("Sending data to: " + CONSUMER_URL);
+        System.out.println("Reading images from from: " + pathToImagesFolder);
+        System.out.println("Sending data to: " + consumerUrl);
     }
 
     public void start() throws InterruptedException {
@@ -85,7 +97,7 @@ public class ImageProducer {
                 e.printStackTrace();
             }
             try {
-                Thread.sleep(DELAY_MS_FOR_PRODUCER);
+                Thread.sleep(sendImageDelay);
             } catch (InterruptedException e) {
                 //just ignore it...
             }
@@ -102,7 +114,7 @@ public class ImageProducer {
     }
 
     private int sendDataToConsumer(byte[] dataToSend) {
-        HttpPut putRequest = new HttpPut(CONSUMER_URL);
+        HttpPut putRequest = new HttpPut(consumerUrl);
         putRequest.addHeader(new BasicHeader(HTTP.CONTENT_TYPE, "application/json; charset=utf-8"));
         HttpEntity input = new ByteArrayEntity(dataToSend);
         putRequest.setEntity(input);
@@ -110,6 +122,7 @@ public class ImageProducer {
             return response.getStatusLine().getStatusCode();
         } catch (IOException e) {
             System.out.println("Error while sending image to the consumer: " + e.getMessage());
+            e.printStackTrace();
         }
         
         return -1;
@@ -120,7 +133,7 @@ public class ImageProducer {
      * @throws IOException 
      */
     private byte[] getNewestImageData() throws IOException {
-        File newestFile = getNewestFile(PATH_TO_IMAGES_FOLDER);
+        File newestFile = getNewestFile(pathToImagesFolder);
         if (newestFile == null) {
             System.out.println("No file found");
             return null;

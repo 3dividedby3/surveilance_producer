@@ -8,7 +8,7 @@ public class RsaEncrypterTest {
 
     @Test
     public void testEncryption() {
-        RsaEncrypter rsaEncrypter = new RsaEncrypter();
+        RsaEncrypter rsaEncrypter = new RsaEncrypter("nottherealkeyy==");
         byte[] result = rsaEncrypter.encryptAndEncode("test".getBytes());
         
         assertEquals("Results must be identical"

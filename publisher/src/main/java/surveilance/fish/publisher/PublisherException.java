@@ -8,6 +8,10 @@ public class PublisherException extends RuntimeException {
         super(t);
     }
     
+    public PublisherException(String message) {
+        super(message);
+    }
+    
     public PublisherException(String message, Throwable t) {
         super(message, t);
     }

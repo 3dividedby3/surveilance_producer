@@ -19,7 +19,7 @@ public class AesUtil {
             keyGenerator = KeyGenerator.getInstance(ALGORITHM_AES);
         } catch(NoSuchAlgorithmException e) {
             System.out.println("Error while creating AES key generator: " + e.getMessage());
-            throw new PublisherException(e);
+            throw new PublisherException("Error while creating AES key generator", e);
         }
         keyGenerator.init(AES_KEY_SIZE);
         

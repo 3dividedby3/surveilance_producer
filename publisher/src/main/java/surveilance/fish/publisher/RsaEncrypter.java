@@ -17,9 +17,6 @@ public class RsaEncrypter {
 
     public static final String EMPTY_STRING = "";
     public static final String ALGORITHM_RSA = "RSA";
-    
-    //easier to do this than read data from resources folder
-    private static final String ENCODED_PRIVATE_KEY = "nottherealkeyy==";
 
     private static final Decoder BASE64_DECODER = Base64.getDecoder();
     private static final Encoder BASE64_ENCODER = Base64.getEncoder();
@@ -27,14 +24,14 @@ public class RsaEncrypter {
     private final Key privateKey;
     private final Cipher encryptCipher;
     
-    public RsaEncrypter() {
+    public RsaEncrypter(String encodedPrivateKey) {
         try {
-            privateKey = initKey(ENCODED_PRIVATE_KEY);
+            privateKey = initKey(encodedPrivateKey);
             encryptCipher = Cipher.getInstance(ALGORITHM_RSA);
             encryptCipher.init(Cipher.ENCRYPT_MODE, privateKey);
         } catch(IOException | GeneralSecurityException e) {
-            System.out.println("Error while creating RSA encrypter: " + e.getMessage());
-            throw new PublisherException(e);
+            System.out.println("Error while creating RSA encrypter with key [" + encodedPrivateKey + "], error: " + e.getMessage());
+            throw new PublisherException("Error while creating RSA encrypter with key: " + encodedPrivateKey, e);
         }
     }
     
@@ -44,6 +41,7 @@ public class RsaEncrypter {
             result =  encryptCipher.doFinal(imageData);
         } catch (GeneralSecurityException e) {
             System.out.println("Cannot encrypt message [" + new String(imageData) + "], returning empty; error: " + e.getMessage());
+            throw new PublisherException("Cannot encrypt message [" + new String(imageData) + "]", e);
         }
         
         return BASE64_ENCODER.encode(result);
