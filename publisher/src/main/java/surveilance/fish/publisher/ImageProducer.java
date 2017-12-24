@@ -115,7 +115,7 @@ public class ImageProducer {
 
     private int sendDataToConsumer(byte[] dataToSend) {
         HttpPut putRequest = new HttpPut(consumerUrl);
-        putRequest.addHeader(new BasicHeader(HTTP.CONTENT_TYPE, "application/json; charset=utf-8"));
+        putRequest.addHeader(new BasicHeader(HTTP.CONTENT_TYPE, "application/json; charset=UTF-8"));
         HttpEntity input = new ByteArrayEntity(dataToSend);
         putRequest.setEntity(input);
         try(CloseableHttpResponse response = httpClient.execute(putRequest)) {
