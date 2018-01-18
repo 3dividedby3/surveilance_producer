@@ -8,9 +8,9 @@
         <version>1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>publisher</artifactId>
+    <artifactId>security</artifactId>
     <packaging>jar</packaging>
-    <name>publisher</name>
+    <name>security</name>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -21,30 +21,15 @@
             <groupId>whisper.fish</groupId>
             <artifactId>model</artifactId>
         </dependency>
-        <dependency>
-            <groupId>whisper.fish</groupId>
-            <artifactId>security</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>whisper.fish</groupId>
-            <artifactId>persistance</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpclient</artifactId>
-        </dependency>
+        
         <!-- test -->
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
         </dependency>
     </dependencies>
-	
-	<build>
+    
+    <build>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -53,15 +38,15 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>appassembler-maven-plugin</artifactId>
-				<configuration>
-					<assembleDirectory>target</assembleDirectory>
-					<programs>
-						<program>
-							<mainClass>surveilance.fish.publisher.App</mainClass>
-							<name>publisher</name>
-						</program>
-					</programs>
-				</configuration>
+                <configuration>
+                    <assembleDirectory>target</assembleDirectory>
+                    <programs>
+                        <program>
+                            <mainClass>surveilance.fish.publisher.App</mainClass>
+                            <name>security</name>
+                        </program>
+                    </programs>
+                </configuration>
             </plugin>
         </plugins>
     </build>

@@ -1,4 +1,4 @@
-package surveilance.fish.publisher;
+package surveilance.fish.security;
 
 import java.security.GeneralSecurityException;
 import java.security.Key;
@@ -21,7 +21,7 @@ public class AesEncrypter {
             cipher = Cipher.getInstance(ALGORITHM_AES);
         } catch(GeneralSecurityException e) {
             System.out.println("Error while creating AES cipher: " + e.getMessage());
-            throw new PublisherException(e);
+            throw new SecurityException(e);
         }
     }
 
@@ -36,7 +36,7 @@ public class AesEncrypter {
             encrypted = cipher.doFinal(data);
         } catch (GeneralSecurityException e) {
             System.out.println("Cannot encrypt data [" + new String(data) + "] with key [" + new String(key) + "], error: "+ e.getMessage());
-            throw new PublisherException(e);
+            throw new SecurityException(e);
         }
 
         return BASE64_ENCODER.encode(encrypted);

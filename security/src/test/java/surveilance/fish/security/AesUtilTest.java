@@ -1,4 +1,4 @@
-package surveilance.fish.publisher;
+package surveilance.fish.security;
 
 import static org.junit.Assert.assertNotNull;
 

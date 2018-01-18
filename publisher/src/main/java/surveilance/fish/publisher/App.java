@@ -2,6 +2,13 @@ package surveilance.fish.publisher;
 
 import java.util.Map;
 
+import surveilance.fish.persistence.simple.FileSaver;
+import surveilance.fish.security.AesDecrypter;
+import surveilance.fish.security.AesEncrypter;
+import surveilance.fish.security.AesUtil;
+import surveilance.fish.security.RsaDecrypter;
+import surveilance.fish.security.RsaEncrypter;
+
 public class App {
 
     public static final String RSA_PRIVATE_KEY_ENCODED = "rsa.private.key.encoded";
@@ -16,6 +23,17 @@ public class App {
         }
         Map<String, String> properties = (Map)(new PropertiesReader().readProperties(pathToFile));
         System.out.println("Starting image producer with properties: " + properties);
-        new ImageProducer(properties, new RsaEncrypter(properties.get(RSA_PRIVATE_KEY_ENCODED)), new AesEncrypter(), new AesUtil()).start();
+        new ImageProducer(properties
+                , new RsaEncrypter(properties.get(RSA_PRIVATE_KEY_ENCODED))
+                , new AesEncrypter()
+                , new AesUtil())
+            .start();
+        new ViewerDataConsumer(properties
+                , new AesDecrypter()
+                , new RsaDecrypter(properties.get(RSA_PRIVATE_KEY_ENCODED), true)
+                , new FileSaver(properties.get("persist.data.folder.path")))
+            .start();
+
+        Thread.currentThread().join();
     }
 }

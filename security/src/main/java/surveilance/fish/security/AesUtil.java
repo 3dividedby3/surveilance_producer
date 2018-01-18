@@ -1,6 +1,6 @@
-package surveilance.fish.publisher;
+package surveilance.fish.security;
 
-import static surveilance.fish.publisher.AesEncrypter.ALGORITHM_AES;
+import static surveilance.fish.security.AesEncrypter.ALGORITHM_AES;
 
 import java.security.NoSuchAlgorithmException;
 
@@ -19,7 +19,7 @@ public class AesUtil {
             keyGenerator = KeyGenerator.getInstance(ALGORITHM_AES);
         } catch(NoSuchAlgorithmException e) {
             System.out.println("Error while creating AES key generator: " + e.getMessage());
-            throw new PublisherException("Error while creating AES key generator", e);
+            throw new SecurityException("Error while creating AES key generator", e);
         }
         keyGenerator.init(AES_KEY_SIZE);
         

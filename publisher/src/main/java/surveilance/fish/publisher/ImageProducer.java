@@ -25,6 +25,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 
 import surveilance.fish.model.DataBrick;
+import surveilance.fish.security.AesEncrypter;
+import surveilance.fish.security.AesUtil;
+import surveilance.fish.security.RsaEncrypter;
 
 /**
  * It is the job of the producer to encode the image data to base 64 before sending it to the consumer
@@ -52,7 +55,6 @@ public class ImageProducer {
     private final int clientTimeout;
     private final String consumerUrl;
 
-    
     public ImageProducer(Map<String, String> properties, RsaEncrypter rsaEncrypter, AesEncrypter aesEncrypter, AesUtil aesUtil) {
         this.rsaEncrypter = rsaEncrypter;
         this.aesEncrypter = aesEncrypter;
@@ -78,29 +80,39 @@ public class ImageProducer {
     public void start() throws InterruptedException {
         Thread t = new Thread(() -> produceImages());
         t.start();
-        System.out.println("Started!");
-        t.join();
+        System.out.println("Started image producer!");
     }
 
     private void produceImages() {
         while(true) {
-            byte[] imageData = null;
             try {
-                imageData = getNewestImageData();
-                if (imageData != null) {
-                    String dataBrickJson = objectWriter.writeValueAsString(createDataBrick(imageData));
-                    System.out.println("Sending data to consumer: " + dataBrickJson);
-                    System.out.println("Consumer responded with: " + sendDataToConsumer(dataBrickJson.getBytes()));
-                }
-            } catch(IOException e) {
-                System.out.println("Error processing image: " + e.getMessage());
-                e.printStackTrace();
+                doWork();
+            } catch(Throwable t) {
+                System.out.println("Error while producing iamge: " + t.getMessage());
+                t.printStackTrace();
             }
+
             try {
                 Thread.sleep(sendImageDelay);
             } catch (InterruptedException e) {
                 //just ignore it...
             }
+        }
+    }
+
+    private void doWork() {
+        byte[] imageData = null;
+        try {
+            imageData = getNewestImageData();
+            if (imageData == null) {
+                return;
+            }
+            String dataBrickJson = objectWriter.writeValueAsString(createDataBrick(imageData));
+//          System.out.println("Sending data to consumer: " + dataBrickJson);
+            System.out.println("Consumer responded with: " + sendDataToConsumer(dataBrickJson.getBytes()));
+        } catch(IOException e) {
+            System.out.println("Error processing image: " + e.getMessage());
+            e.printStackTrace();
         }
     }
     
@@ -115,7 +127,7 @@ public class ImageProducer {
 
     private int sendDataToConsumer(byte[] dataToSend) {
         HttpPut putRequest = new HttpPut(consumerUrl);
-        putRequest.addHeader(new BasicHeader(HTTP.CONTENT_TYPE, "application/json; charset=UTF-8"));
+        putRequest.addHeader(new BasicHeader(HTTP.CONTENT_TYPE, "application/json; charset=utf-8"));
         HttpEntity input = new ByteArrayEntity(dataToSend);
         putRequest.setEntity(input);
         try(CloseableHttpResponse response = httpClient.execute(putRequest)) {
@@ -165,5 +177,4 @@ public class ImageProducer {
         return newestFile;
     }
 
-    
 }

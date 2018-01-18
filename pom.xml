@@ -12,6 +12,8 @@
 
     <modules>
         <module>generator</module>
+		<module>security</module>
+		<module>persistance</module>
         <module>publisher</module>
     </modules>
 
@@ -32,6 +34,18 @@
                 <groupId>whisper.fish</groupId>
                 <artifactId>model</artifactId>
                 <version>${version.whisper.fish}</version>
+            </dependency>
+        
+            <dependency>
+                <groupId>whisper.fish</groupId>
+                <artifactId>security</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            
+            <dependency>
+                <groupId>whisper.fish</groupId>
+                <artifactId>persistance</artifactId>
+                <version>${project.version}</version>
             </dependency>
         
             <dependency>
