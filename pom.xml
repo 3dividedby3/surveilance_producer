@@ -24,7 +24,7 @@
         <version.appassembler.maven.plugin>2.0.0</version.appassembler.maven.plugin>
         <version.apache.http.client>4.5.3</version.apache.http.client>
         <version.whisper.fish>1.0-SNAPSHOT</version.whisper.fish>
-        <version.fasterxml.jackson>2.9.0</version.fasterxml.jackson>
+        <version.fasterxml.jackson>2.9.4</version.fasterxml.jackson>
         <version.junit>4.4</version.junit>
     </properties>
 
