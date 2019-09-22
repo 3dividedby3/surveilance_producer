@@ -1,4 +1,4 @@
-package surveilance.fish.generator.App;
+package surveilance.fish.generator;
 
 public class GeneratorException extends RuntimeException {
 

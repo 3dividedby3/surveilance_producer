@@ -1,10 +1,11 @@
 package surveilance.fish.publisher;
 
 import static surveilance.fish.publisher.ImageProducer.SECOND;
-
+import static surveilance.fish.publisher.App.PROP_AUTH_COOKIE;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -13,6 +14,7 @@ import org.apache.http.HttpStatus;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 
@@ -27,7 +29,23 @@ import surveilance.fish.security.RsaDecrypter;
 
 public class ViewerDataConsumer {
     
-    private static final DataBrick EMPTY_DATA_BRICK = new DataBrick();
+    public static final String PROP_DATA_PRODUCER_URL = "data.producer.url";
+    public static final String PROP_CLIENT_TIMEOUT = "client.timeout";
+    public static final String PROP_DATA_PRODUCER_GET_DATA_DELAY = "data.producer.get.data.delay";
+    //TODO: same constant found in surveilance.fish.business.security.AuthValidator.NAME_AUTH_COOKIE, extract to common module
+    public static final String NAME_AUTH_COOKIE = "authCookie";
+    
+    private static final DataBrick EMPTY_DATA_BRICK = new DataBrick() {
+        @Override
+        public void setAesKey(String aesKey) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void setPayload(String payload) {
+            throw new UnsupportedOperationException();
+        }
+    };
     
     private final int dataProducerGetDataDelay;
     private final int clientTimeout;
@@ -41,10 +59,12 @@ public class ViewerDataConsumer {
     
     private final DataAccessor<ViewerData> dataAccessor;
     
+    private final String authCookie;
+    
     public ViewerDataConsumer(Map<String, String> properties, AesDecrypter aesDecrypter, RsaDecrypter rsaDecrypter, DataAccessor<ViewerData> dataAccessor) {
-        dataProducerGetDataDelay = SECOND * Integer.valueOf(properties.get("data.producer.get.data.delay"));
-        clientTimeout = SECOND * Integer.valueOf(properties.get("client.timeout"));
-        dataProducerUrl = properties.get("data.producer.url");
+        dataProducerGetDataDelay = SECOND * Integer.valueOf(properties.get(PROP_DATA_PRODUCER_GET_DATA_DELAY));
+        clientTimeout = SECOND * Integer.valueOf(properties.get(PROP_CLIENT_TIMEOUT));
+        dataProducerUrl = properties.get(PROP_DATA_PRODUCER_URL);
         
         objectMapper = new ObjectMapper();
         
@@ -58,6 +78,8 @@ public class ViewerDataConsumer {
                 .setConnectionRequestTimeout(clientTimeout)
                 .build();
         httpClient = HttpClientBuilder.create().setDefaultRequestConfig(requestConfig).build();
+        
+        authCookie = properties.get(PROP_AUTH_COOKIE);
         
         System.out.println("Reading data from: " + dataProducerUrl);
         System.out.println("Saving data to: " + properties.get("persist.data.folder.path"));
@@ -87,7 +109,7 @@ public class ViewerDataConsumer {
     }
 
     private void doWork() {
-        DataBrick dataBrick = retrieveData();
+        DataBrick<List<ViewerData>> dataBrick = retrieveData();
         if (EMPTY_DATA_BRICK == dataBrick) {
             return;
         }
@@ -105,16 +127,24 @@ public class ViewerDataConsumer {
         }
     }
 
-    private DataBrick retrieveData() {
-        HttpGet getRequest = new HttpGet(dataProducerUrl);
-        DataBrick dataBrick = EMPTY_DATA_BRICK;
+    private DataBrick<List<ViewerData>> retrieveData() {
+        HttpGet getRequest;
+        try {
+            URIBuilder builder = new URIBuilder(dataProducerUrl);
+            builder.setParameter(NAME_AUTH_COOKIE, authCookie);
+            getRequest = new HttpGet(builder.build());
+        } catch (URISyntaxException e) {
+            throw new PublisherException("Cannot create URIBuilder", e);
+        }
+
+        DataBrick<List<ViewerData>> dataBrick = EMPTY_DATA_BRICK;
         try(CloseableHttpResponse response = httpClient.execute(getRequest)) {
             int responseCode = response.getStatusLine().getStatusCode();
             System.out.println("Viewer data producer responded with: " + responseCode);
             if (responseCode == HttpStatus.SC_OK) {
                 String body = new BufferedReader(new InputStreamReader(response.getEntity().getContent())).lines().collect(Collectors.joining());
                 System.out.println("Received data from viewer data producer: " + body);
-                dataBrick = objectMapper.readValue(body, DataBrick.class);
+                dataBrick = objectMapper.readValue(body, new TypeReference<DataBrick<List<ViewerData>>>() {});
             }
         } catch (IOException e) {
             System.out.println("Error while sending image to the consumer: " + e.getMessage());

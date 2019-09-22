@@ -1,9 +1,8 @@
-package surveilance.fish.generator.App;
+package surveilance.fish.generator;
 
 
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.Key;
@@ -15,7 +14,7 @@ import java.util.Base64.Encoder;
 
 /**
  * Generate a RSA key pair that will be used by the image publisher and surveillance web service to communicate
- * This will provide authentication of the publisher to the webservice by being able to decrypt messages that arrive from the publisher only.
+ * This will provide authentication of the publisher to the webservice by being able to only decrypt messages that arrive from the publisher.
  */
 public class App {
 
@@ -46,8 +45,8 @@ public class App {
     }
 
     private void saveKeyToFile(Path filePath, Key key) {
-        try(OutputStream pirvateKeyFos = new FileOutputStream(filePath.toFile())) {
-            pirvateKeyFos.write(BASE64_ENCODER.encode(key.getEncoded()));
+        try {
+            Files.write(filePath, BASE64_ENCODER.encode(key.getEncoded()));
         } catch(IOException e) {
             System.out.println("Could not save key: " + e.getMessage());
             throw new GeneratorException(e);

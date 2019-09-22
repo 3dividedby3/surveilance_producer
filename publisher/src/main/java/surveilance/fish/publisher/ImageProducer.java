@@ -2,6 +2,7 @@ package surveilance.fish.publisher;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -11,16 +12,19 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.stream.Stream;
 
+import static surveilance.fish.publisher.App.PROP_AUTH_COOKIE;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPut;
+import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.entity.ByteArrayEntity;
+import org.apache.http.entity.ContentType;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.message.BasicHeader;
 import org.apache.http.protocol.HTTP;
-
+import static surveilance.fish.publisher.ViewerDataConsumer.NAME_AUTH_COOKIE;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 
@@ -54,6 +58,8 @@ public class ImageProducer {
     private final int sendImageDelay;
     private final int clientTimeout;
     private final String consumerUrl;
+    
+    private final String authCookie;
 
     public ImageProducer(Map<String, String> properties, RsaEncrypter rsaEncrypter, AesEncrypter aesEncrypter, AesUtil aesUtil) {
         this.rsaEncrypter = rsaEncrypter;
@@ -72,6 +78,8 @@ public class ImageProducer {
                 .build();
         httpClient = HttpClientBuilder.create().setDefaultRequestConfig(requestConfig).build();
         
+        authCookie = properties.get(PROP_AUTH_COOKIE);
+        
         System.out.println("Application started from: " + BASE_PATH);
         System.out.println("Reading images from from: " + pathToImagesFolder);
         System.out.println("Sending data to: " + consumerUrl);
@@ -88,7 +96,7 @@ public class ImageProducer {
             try {
                 doWork();
             } catch(Throwable t) {
-                System.out.println("Error while producing iamge: " + t.getMessage());
+                System.out.println("Error while producing image: " + t.getMessage());
                 t.printStackTrace();
             }
 
@@ -116,8 +124,8 @@ public class ImageProducer {
         }
     }
     
-    private DataBrick createDataBrick(byte[] payload) {
-        DataBrick dataBrick = new DataBrick();
+    private DataBrick<byte[]> createDataBrick(byte[] payload) {
+        DataBrick<byte[]> dataBrick = new DataBrick<>();
         byte[] key = aesUtil.createAesKey();
         dataBrick.setAesKey(rsaEncrypter.encryptAndEncode(key));
         dataBrick.setPayload(aesEncrypter.encryptAndEncode(payload, key));
@@ -126,8 +134,16 @@ public class ImageProducer {
     }
 
     private int sendDataToConsumer(byte[] dataToSend) {
-        HttpPut putRequest = new HttpPut(consumerUrl);
-        putRequest.addHeader(new BasicHeader(HTTP.CONTENT_TYPE, "application/json; charset=utf-8"));
+        HttpPut putRequest;
+        try {
+            URIBuilder builder = new URIBuilder(consumerUrl);
+            builder.setParameter(NAME_AUTH_COOKIE, authCookie);
+            putRequest = new HttpPut(builder.build());
+        } catch (URISyntaxException e) {
+            throw new PublisherException("Cannot create URIBuilder", e);
+        }
+
+        putRequest.addHeader(new BasicHeader(HTTP.CONTENT_TYPE, ContentType.APPLICATION_JSON.toString()));
         HttpEntity input = new ByteArrayEntity(dataToSend);
         putRequest.setEntity(input);
         try(CloseableHttpResponse response = httpClient.execute(putRequest)) {

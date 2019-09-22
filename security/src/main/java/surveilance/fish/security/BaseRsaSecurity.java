@@ -37,14 +37,14 @@ public abstract class BaseRsaSecurity {
     
     protected abstract int getMode();
 
-    public byte[] doFinal(byte[] dataToEncrypt) {
-        if (dataToEncrypt == null) {
-            throw new IllegalArgumentException("dataToEncrypt cannot be null");
+    public byte[] doFinal(byte[] value) {
+        if (value == null) {
+            throw new IllegalArgumentException("value cannot be null");
         }
         try {
-            return cipher.doFinal(dataToEncrypt);
+            return cipher.doFinal(value);
         } catch (GeneralSecurityException e) {
-            throw new SecurityException("Cannot decrypt message: [" + new String(dataToEncrypt) + "]", e);
+            throw new SecurityException("RsaSecurity cannot process value: [" + new String(value) + "]", e);
         }
     }
     

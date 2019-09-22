@@ -13,6 +13,8 @@ public class App {
 
     public static final String RSA_PRIVATE_KEY_ENCODED = "rsa.private.key.encoded";
     public static final String DEFAULT_APP_PROPERTIES_PATH = "classpath:/app.properties";
+    
+    public static final String PROP_AUTH_COOKIE = "auth.cookie";
 
     public static void main(String[] args) throws InterruptedException {
         String pathToFile = null;
@@ -23,6 +25,10 @@ public class App {
         }
         Map<String, String> properties = (Map)(new PropertiesReader().readProperties(pathToFile));
         System.out.println("Starting image producer with properties: " + properties);
+
+        new AuthCookieUpdater(properties, new RsaEncrypter(properties.get(RSA_PRIVATE_KEY_ENCODED)), new AesEncrypter(), new AesUtil())
+            .update(properties.get(PROP_AUTH_COOKIE));
+        
         new ImageProducer(properties
                 , new RsaEncrypter(properties.get(RSA_PRIVATE_KEY_ENCODED))
                 , new AesEncrypter()
