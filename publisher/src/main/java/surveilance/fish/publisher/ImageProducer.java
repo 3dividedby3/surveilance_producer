@@ -104,11 +104,12 @@ public class ImageProducer {
                 Thread.sleep(sendImageDelay);
             } catch (InterruptedException e) {
                 //just ignore it...
+                e.printStackTrace();
             }
         }
     }
 
-    private void doWork() {
+    public void doWork() {
         byte[] imageData = null;
         try {
             imageData = getNewestImageData();
