@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.util.Map;
 
 import org.apache.http.HttpEntity;
+import org.apache.http.HttpStatus;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPut;
@@ -55,7 +56,8 @@ public class AuthCookieUpdater {
         authManagerUrl = properties.get(PROP_AUTH_MANAGER_URL);
     }
     
-    public void update(String authCookie) {
+    public int update(String authCookie) {
+        int statusCode = -1;
         String dataBrickJson = createDataBrickJson(authCookie);
         
         HttpPut putRequest = new HttpPut(authManagerUrl);
@@ -63,12 +65,18 @@ public class AuthCookieUpdater {
         HttpEntity input = new ByteArrayEntity(dataBrickJson.getBytes());
         putRequest.setEntity(input);
         try(CloseableHttpResponse response = httpClient.execute(putRequest)) {
-            response.getStatusLine().getStatusCode();
-            System.out.println("Auth cookie set to: " + authCookie);
+            statusCode = response.getStatusLine().getStatusCode();
+            if (statusCode == HttpStatus.SC_OK) {
+                System.out.println("Auth cookie set to: " + authCookie);
+            } else {
+                System.out.println("Could not set auth cookie, received statusCode: " + statusCode);
+            }
         } catch (IOException e) {
             System.out.println("Error while sending auth cookie to the UI: " + e.getMessage());
             e.printStackTrace();
         }
+        
+        return statusCode;
     }
 
     private String createDataBrickJson(String authCookie) {

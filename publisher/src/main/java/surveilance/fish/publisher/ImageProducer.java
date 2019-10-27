@@ -14,6 +14,7 @@ import java.util.stream.Stream;
 
 import static surveilance.fish.publisher.App.PROP_AUTH_COOKIE;
 import org.apache.http.HttpEntity;
+import org.apache.http.HttpStatus;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPut;
@@ -50,6 +51,7 @@ public class ImageProducer {
     private final RsaEncrypter rsaEncrypter;
     private final AesEncrypter aesEncrypter;
     private final AesUtil aesUtil;
+    private final AuthCookieUpdater authCookieUpdater;
     
     private final ObjectWriter objectWriter;
     private final CloseableHttpClient httpClient;
@@ -61,10 +63,11 @@ public class ImageProducer {
     
     private final String authCookie;
 
-    public ImageProducer(Map<String, String> properties, RsaEncrypter rsaEncrypter, AesEncrypter aesEncrypter, AesUtil aesUtil) {
+    public ImageProducer(Map<String, String> properties, RsaEncrypter rsaEncrypter, AesEncrypter aesEncrypter, AesUtil aesUtil, AuthCookieUpdater authCookieUpdater) {
         this.rsaEncrypter = rsaEncrypter;
         this.aesEncrypter = aesEncrypter;
         this.aesUtil = aesUtil;
+        this.authCookieUpdater = authCookieUpdater;
         sendImageDelay = SECOND * Integer.valueOf(properties.get(SEND_IMAGE_DELAY));
         clientTimeout = SECOND * Integer.valueOf(properties.get(CLIENT_TIMEOUT));
         consumerUrl = properties.get(CONSUMER_URL);
@@ -118,7 +121,11 @@ public class ImageProducer {
             }
             String dataBrickJson = objectWriter.writeValueAsString(createDataBrick(imageData));
 //          System.out.println("Sending data to consumer: " + dataBrickJson);
-            System.out.println("Consumer responded with: " + sendDataToConsumer(dataBrickJson.getBytes()));
+            int statusCode = sendDataToConsumer(dataBrickJson.getBytes());
+            if (statusCode != HttpStatus.SC_OK) {
+                authCookieUpdater.update(authCookie);
+            }
+            System.out.println("Consumer responded with: " + statusCode);
         } catch(IOException e) {
             System.out.println("Error processing image: " + e.getMessage());
             e.printStackTrace();

@@ -56,12 +56,13 @@ public class ViewerDataConsumer {
     
     private final AesDecrypter aesDecrypter;
     private final RsaDecrypter rsaDecrypter;
+    private final AuthCookieUpdater authCookieUpdater;
     
     private final DataAccessor<ViewerData> dataAccessor;
     
     private final String authCookie;
     
-    public ViewerDataConsumer(Map<String, String> properties, AesDecrypter aesDecrypter, RsaDecrypter rsaDecrypter, DataAccessor<ViewerData> dataAccessor) {
+    public ViewerDataConsumer(Map<String, String> properties, AesDecrypter aesDecrypter, RsaDecrypter rsaDecrypter, DataAccessor<ViewerData> dataAccessor, AuthCookieUpdater authCookieUpdater) {
         dataProducerGetDataDelay = SECOND * Integer.valueOf(properties.get(PROP_DATA_PRODUCER_GET_DATA_DELAY));
         clientTimeout = SECOND * Integer.valueOf(properties.get(PROP_CLIENT_TIMEOUT));
         dataProducerUrl = properties.get(PROP_DATA_PRODUCER_URL);
@@ -70,6 +71,7 @@ public class ViewerDataConsumer {
         
         this.aesDecrypter = aesDecrypter;
         this.rsaDecrypter = rsaDecrypter;
+        this.authCookieUpdater = authCookieUpdater;
         
         this.dataAccessor = dataAccessor;
 
@@ -145,6 +147,8 @@ public class ViewerDataConsumer {
                 String body = new BufferedReader(new InputStreamReader(response.getEntity().getContent())).lines().collect(Collectors.joining());
                 System.out.println("Received data from viewer data producer: " + body);
                 dataBrick = objectMapper.readValue(body, new TypeReference<DataBrick<List<ViewerData>>>() {});
+            } else {
+                authCookieUpdater.update(authCookie);
             }
         } catch (IOException e) {
             System.out.println("Error while reading data: " + e.getMessage());
