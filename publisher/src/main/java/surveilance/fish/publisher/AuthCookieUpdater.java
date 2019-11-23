@@ -1,7 +1,7 @@
 package surveilance.fish.publisher;
 
-import static surveilance.fish.publisher.ImageProducer.CLIENT_TIMEOUT;
-import static surveilance.fish.publisher.ImageProducer.SECOND;
+import static surveilance.fish.publisher.App.PROP_CLIENT_TIMEOUT;
+import static surveilance.fish.publisher.App.SECOND;
 
 import java.io.IOException;
 import java.util.Map;
@@ -48,8 +48,8 @@ public class AuthCookieUpdater {
         objectWriter = new ObjectMapper().writer();
         
         RequestConfig requestConfig = RequestConfig.custom()
-                .setConnectTimeout(SECOND * Integer.valueOf(properties.get(CLIENT_TIMEOUT)))
-                .setConnectionRequestTimeout(SECOND * Integer.valueOf(properties.get(CLIENT_TIMEOUT)))
+                .setConnectTimeout(SECOND * Integer.valueOf(properties.get(PROP_CLIENT_TIMEOUT)))
+                .setConnectionRequestTimeout(SECOND * Integer.valueOf(properties.get(PROP_CLIENT_TIMEOUT)))
                 .build();
         httpClient = HttpClientBuilder.create().setDefaultRequestConfig(requestConfig).build();
         
@@ -88,7 +88,6 @@ public class AuthCookieUpdater {
         try {
             dataBrickJson = objectWriter.writeValueAsString(dataBrick);
         } catch (JsonProcessingException e) {
-            e.printStackTrace();
             throw new PublisherException("Cannot write data brick as string", e);
         }
         

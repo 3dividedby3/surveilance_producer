@@ -1,4 +1,4 @@
-package surveilance.fish.security;
+package surveilance.fish.security.base;
 
 import java.security.GeneralSecurityException;
 import java.security.Key;
@@ -10,6 +10,8 @@ import java.util.Base64.Decoder;
 import java.util.Base64.Encoder;
 
 import javax.crypto.Cipher;
+
+import surveilance.fish.security.SecurityException;
 
 public abstract class BaseRsaSecurity {
 

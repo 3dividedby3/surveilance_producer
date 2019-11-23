@@ -10,7 +10,9 @@ import java.util.Base64.Decoder;
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 
-public class AesDecrypter extends AesSecBase {
+import surveilance.fish.security.base.BaseAesSec;
+
+public class AesDecrypter extends BaseAesSec {
     
     private static final Decoder BASE64_DECODER = Base64.getDecoder();
     

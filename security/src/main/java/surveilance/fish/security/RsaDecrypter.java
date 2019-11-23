@@ -2,6 +2,8 @@ package surveilance.fish.security;
 
 import javax.crypto.Cipher;
 
+import surveilance.fish.security.base.BaseRsaSecurity;
+
 public class RsaDecrypter extends BaseRsaSecurity {
     
     public RsaDecrypter(String encodedKey) {

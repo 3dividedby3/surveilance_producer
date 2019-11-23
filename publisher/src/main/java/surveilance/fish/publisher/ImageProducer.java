@@ -2,7 +2,6 @@ package surveilance.fish.publisher;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -10,158 +9,65 @@ import java.util.Base64;
 import java.util.Base64.Encoder;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
-import static surveilance.fish.publisher.App.PROP_AUTH_COOKIE;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpStatus;
-import org.apache.http.client.config.RequestConfig;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPut;
-import org.apache.http.client.utils.URIBuilder;
-import org.apache.http.entity.ByteArrayEntity;
-import org.apache.http.entity.ContentType;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.message.BasicHeader;
-import org.apache.http.protocol.HTTP;
-import static surveilance.fish.publisher.ViewerDataConsumer.NAME_AUTH_COOKIE;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectWriter;
-
-import surveilance.fish.model.DataBrick;
+import surveilance.fish.publisher.base.BaseProducer;
 import surveilance.fish.security.AesEncrypter;
 import surveilance.fish.security.AesUtil;
 import surveilance.fish.security.RsaEncrypter;
 
-/**
- * It is the job of the producer to encode the image data to base 64 before sending it to the consumer
- */
-public class ImageProducer {
-    public static final String SEND_IMAGE_DELAY = "send.image.delay";
-    public static final String CONSUMER_URL = "consumer.url";
-    public static final String IMAGES_FOLDER_PATH = "images.folder.path";
-    public static final String CLIENT_TIMEOUT = "client.timeout";
-    
-    public static final int SECOND = 1000;
+public class ImageProducer extends BaseProducer<byte[]> {
+    public static final String PROP_CAPTURE_IMAGE_SCRIPT = "capture.image.script";
+    public static final String PROP_SEND_IMAGE_DELAY = "send.image.delay";
+    public static final String PROP_CONSUMER_URL = "consumer.url";
+    public static final String PROP_IMAGES_FOLDER_PATH = "images.folder.path";
     
     private static final Encoder BASE64_ENCODER = Base64.getEncoder();
-    private static final Path BASE_PATH = Paths.get(System.getProperty("user.dir"));
-
-    private final RsaEncrypter rsaEncrypter;
-    private final AesEncrypter aesEncrypter;
-    private final AesUtil aesUtil;
-    private final AuthCookieUpdater authCookieUpdater;
     
-    private final ObjectWriter objectWriter;
-    private final CloseableHttpClient httpClient;
     private final Path pathToImagesFolder;
-    
-    private final int sendImageDelay;
-    private final int clientTimeout;
-    private final String consumerUrl;
-    
-    private final String authCookie;
+    private String captureImageScript;
+
 
     public ImageProducer(Map<String, String> properties, RsaEncrypter rsaEncrypter, AesEncrypter aesEncrypter, AesUtil aesUtil, AuthCookieUpdater authCookieUpdater) {
-        this.rsaEncrypter = rsaEncrypter;
-        this.aesEncrypter = aesEncrypter;
-        this.aesUtil = aesUtil;
-        this.authCookieUpdater = authCookieUpdater;
-        sendImageDelay = SECOND * Integer.valueOf(properties.get(SEND_IMAGE_DELAY));
-        clientTimeout = SECOND * Integer.valueOf(properties.get(CLIENT_TIMEOUT));
-        consumerUrl = properties.get(CONSUMER_URL);
-        pathToImagesFolder = Paths.get(properties.get(IMAGES_FOLDER_PATH));
-        
-        objectWriter = new ObjectMapper().writer().withDefaultPrettyPrinter();
-        
-        RequestConfig requestConfig = RequestConfig.custom()
-                .setConnectTimeout(clientTimeout)
-                .setConnectionRequestTimeout(clientTimeout)
-                .build();
-        httpClient = HttpClientBuilder.create().setDefaultRequestConfig(requestConfig).build();
-        
-        authCookie = properties.get(PROP_AUTH_COOKIE);
-        
-        System.out.println("Application started from: " + BASE_PATH);
-        System.out.println("Reading images from from: " + pathToImagesFolder);
-        System.out.println("Sending data to: " + consumerUrl);
+        super(properties, rsaEncrypter, aesEncrypter, aesUtil, authCookieUpdater);
+        pathToImagesFolder = Paths.get(properties.get(PROP_IMAGES_FOLDER_PATH));
+        captureImageScript = properties.get(PROP_CAPTURE_IMAGE_SCRIPT);
+
+        System.out.println("Reading images from disk location: " + pathToImagesFolder);
     }
 
-    public void start() throws InterruptedException {
-        Thread t = new Thread(() -> produceImages());
-        t.start();
-        System.out.println("Started image producer!");
+    @Override
+    protected String getRepeatTaskDelay(Map<String, String> properties) {
+        return properties.get(PROP_SEND_IMAGE_DELAY);
     }
 
-    private void produceImages() {
-        while(true) {
-            try {
-                doWork();
-            } catch(Throwable t) {
-                System.out.println("Error while producing image: " + t.getMessage());
-                t.printStackTrace();
-            }
+    @Override
+    protected String getDataConsumerUrl(Map<String, String> properties) {
+        return properties.get(PROP_CONSUMER_URL);
+    }
 
-            try {
-                Thread.sleep(sendImageDelay);
-            } catch (InterruptedException e) {
-                //just ignore it...
-                e.printStackTrace();
-            }
+    @Override
+    protected void doWork() throws IOException {
+        captureImage();
+        byte[] imageData = getNewestImageData();
+        if (imageData == null) {
+            return;
         }
-    }
-
-    public void doWork() {
-        byte[] imageData = null;
-        try {
-            imageData = getNewestImageData();
-            if (imageData == null) {
-                return;
-            }
-            String dataBrickJson = objectWriter.writeValueAsString(createDataBrick(imageData));
-//          System.out.println("Sending data to consumer: " + dataBrickJson);
-            int statusCode = sendDataToConsumer(dataBrickJson.getBytes());
-            if (statusCode != HttpStatus.SC_OK) {
-                authCookieUpdater.update(authCookie);
-            }
-            System.out.println("Consumer responded with: " + statusCode);
-        } catch(IOException e) {
-            System.out.println("Error processing image: " + e.getMessage());
-            e.printStackTrace();
-        }
+        processData(imageData);
     }
     
-    private DataBrick<byte[]> createDataBrick(byte[] payload) {
-        DataBrick<byte[]> dataBrick = new DataBrick<>();
-        byte[] key = aesUtil.createAesKey();
-        dataBrick.setAesKey(rsaEncrypter.encryptAndEncode(key));
-        dataBrick.setPayload(aesEncrypter.encryptAndEncode(payload, key));
-        
-        return dataBrick;
-    }
-
-    private int sendDataToConsumer(byte[] dataToSend) {
-        HttpPut putRequest;
+    private void captureImage() {
+        Process p;
         try {
-            URIBuilder builder = new URIBuilder(consumerUrl);
-            builder.setParameter(NAME_AUTH_COOKIE, authCookie);
-            putRequest = new HttpPut(builder.build());
-        } catch (URISyntaxException e) {
-            throw new PublisherException("Cannot create URIBuilder", e);
-        }
-
-        putRequest.addHeader(new BasicHeader(HTTP.CONTENT_TYPE, ContentType.APPLICATION_JSON.toString()));
-        HttpEntity input = new ByteArrayEntity(dataToSend);
-        putRequest.setEntity(input);
-        try(CloseableHttpResponse response = httpClient.execute(putRequest)) {
-            return response.getStatusLine().getStatusCode();
-        } catch (IOException e) {
-            System.out.println("Error while sending image to the consumer: " + e.getMessage());
+            p = Runtime.getRuntime().exec(captureImageScript);
+            p.waitFor(10, TimeUnit.SECONDS);
+            System.out.println ("Capture image script returned: " + p.exitValue());
+            p.destroy();
+        } catch (InterruptedException | IOException e) {
+            System.out.println("Could not capture image: " + e.getMessage());
             e.printStackTrace();
         }
-        
-        return -1;
     }
 
     /**
@@ -200,5 +106,4 @@ public class ImageProducer {
         
         return newestFile;
     }
-
 }

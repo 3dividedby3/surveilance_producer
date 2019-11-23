@@ -1,10 +1,11 @@
 package surveilance.fish.publisher;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Map;
+
+import com.fasterxml.jackson.core.type.TypeReference;
 
 import surveilance.fish.model.BeCommand;
 import surveilance.fish.model.DataBrick;
@@ -19,19 +20,13 @@ public class BeCommandConsumer extends BaseConsumer<BeCommand> {
     
     private ImageProducer imageProducer;
 
-    public BeCommandConsumer(Map<String, String> properties, AesDecrypter aesDecrypter, RsaDecrypter rsaDecrypter, ImageProducer imageProducer) {
-        super(properties, aesDecrypter, rsaDecrypter);
+    public BeCommandConsumer(Map<String, String> properties, AesDecrypter aesDecrypter, RsaDecrypter rsaDecrypter, ImageProducer imageProducer, AuthCookieUpdater authCookieUpdater) {
+        super(properties, aesDecrypter, rsaDecrypter, authCookieUpdater);
         this.imageProducer = imageProducer;
     }
 
-    public void start() throws InterruptedException {
-        Thread t = new Thread(() -> repeatDoWork());
-        t.start();
-        System.out.println("Started be command consumer!");
-    }
-
     @Override
-    protected String getDataProducerGetDelay(Map<String, String> properties) {
+    protected String getRepeatTaskDelay(Map<String, String> properties) {
         return properties.get(PROP_BE_COMMAND_PRODUCER_GET_DATA_DELAY);
     }
 
@@ -48,7 +43,7 @@ public class BeCommandConsumer extends BaseConsumer<BeCommand> {
         }
 
         try {
-            BeCommand beCommand = decryptPayload(dataBrick);
+            BeCommand beCommand = decryptPayload(dataBrick, new TypeReference<BeCommand>() {});
             System.out.println("Received be command: " + beCommand);
             executeCommand(beCommand);
         } catch (IOException e) {
@@ -62,25 +57,13 @@ public class BeCommandConsumer extends BaseConsumer<BeCommand> {
             case "go":
                 switch (beCommand.getValue()) {
                     case "left":
-                        turnOnGpio(24);
-                        waitForExecution(50);
-                        turnOffGpio(24);
-                        imageProducer.doWork();
+                        leftOperation();
                         break;
                     case "right":
-                        turnOnGpio(23);
-                        waitForExecution(150);
-                        turnOffGpio(23);
-                        imageProducer.doWork();
+                        rightOperation();
                         break;
                     case "forward":
-                        turnOnGpio(23);
-                        turnOnGpio(24);
-                        waitForExecution(100);
-                        turnOffGpio(24);
-                        waitForExecution(150);
-                        turnOffGpio(23);
-                        imageProducer.doWork();
+                        forwardOperation();
                         break;
                     default:
                         System.out.println("Unknown 'go' direction received: " + beCommand.getValue());
@@ -92,22 +75,49 @@ public class BeCommandConsumer extends BaseConsumer<BeCommand> {
 
     }
 
-    private void turnOnGpio(int code) throws IOException, FileNotFoundException {
+    private void leftOperation() throws IOException {
+        turnOnGpio(24);
+        waitForExecution(50);
+        turnOffGpio(24);
+        imageProducer.doWork();
+    }
+
+    private void rightOperation() throws IOException {
+        turnOnGpio(23);
+        waitForExecution(150);
+        turnOffGpio(23);
+        imageProducer.doWork();
+    }
+
+    private void forwardOperation() throws IOException {
+        turnOnGpio(23);
+        turnOnGpio(24);
+        waitForExecution(100);
+        turnOffGpio(24);
+        waitForExecution(140);
+        turnOffGpio(23);
+        imageProducer.doWork();
+    }
+
+    private void turnOnGpio(int code) {
         writeValueToGpio(code, (byte)'1');
     }
     
     
-    private void turnOffGpio(int code) throws IOException, FileNotFoundException {
+    private void turnOffGpio(int code) {
         writeValueToGpio(code, (byte)'0');
     }
 
-    private void writeValueToGpio(int code, byte value) throws IOException, FileNotFoundException {
+    private void writeValueToGpio(int code, byte value) {
         try(FileOutputStream fos = new FileOutputStream(new File("/sys/class/gpio/gpio" + code + "/value"))) {
             fos.write(value);
+        } catch (IOException exc) {
+            System.out.println("Could not write value [" + value + "] to gpio: " + code);
+            exc.printStackTrace();
         }
     }
 
-    private void waitForExecution(long delay) throws IOException {
+    private void waitForExecution(long delay) {
         try {
             Thread.sleep(delay);
         } catch (InterruptedException e) {
@@ -117,7 +127,7 @@ public class BeCommandConsumer extends BaseConsumer<BeCommand> {
         }
     }
     
-    private void stopBothGpio() throws IOException, FileNotFoundException {
+    private void stopBothGpio() {
         turnOffGpio(23);
         turnOffGpio(24);
     }

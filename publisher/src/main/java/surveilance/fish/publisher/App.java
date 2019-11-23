@@ -1,5 +1,7 @@
 package surveilance.fish.publisher;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Map;
 
 import org.apache.http.HttpStatus;
@@ -13,6 +15,12 @@ import surveilance.fish.security.RsaEncrypter;
 
 public class App {
 
+    public static final int SECOND = 1000;
+    
+    private static final Path BASE_PATH = Paths.get(System.getProperty("user.dir"));
+
+    public static final String PROP_CLIENT_TIMEOUT = "client.timeout";
+    
     public static final String RSA_PRIVATE_KEY_ENCODED = "rsa.private.key.encoded";
     public static final String DEFAULT_APP_PROPERTIES_PATH = "classpath:/app.properties";
     
@@ -55,8 +63,11 @@ public class App {
         new BeCommandConsumer(properties
                 , new AesDecrypter()
                 , new RsaDecrypter(properties.get(RSA_PRIVATE_KEY_ENCODED), true)
-                , imageProducer)
+                , imageProducer
+                , authCookieUpdater)
             .start();
+        
+        System.out.println("Application started from: " + BASE_PATH);
 
         Thread.currentThread().join();
     }

@@ -8,7 +8,9 @@ import java.util.Base64.Encoder;
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 
-public class AesEncrypter extends AesSecBase {
+import surveilance.fish.security.base.BaseAesSec;
+
+public class AesEncrypter extends BaseAesSec {
     
     private static final Encoder BASE64_ENCODER = Base64.getEncoder(); 
 

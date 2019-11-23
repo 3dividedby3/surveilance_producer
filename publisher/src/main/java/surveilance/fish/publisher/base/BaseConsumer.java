@@ -1,7 +1,7 @@
 package surveilance.fish.publisher.base;
 
 import static surveilance.fish.publisher.App.PROP_AUTH_COOKIE;
-import static surveilance.fish.publisher.ImageProducer.SECOND;
+import static surveilance.fish.publisher.App.SECOND;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -21,18 +21,19 @@ import org.apache.http.impl.client.HttpClientBuilder;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import surveilance.fish.model.BeCommand;
 import surveilance.fish.model.DataBrick;
+import surveilance.fish.publisher.AuthCookieUpdater;
 import surveilance.fish.publisher.PublisherException;
 import surveilance.fish.security.AesDecrypter;
 import surveilance.fish.security.RsaDecrypter;
 
-public abstract class BaseConsumer<T> {
+public abstract class BaseConsumer<T> extends BaseRepeatableTask {
     
     //TODO: same constant found in surveilance.fish.business.security.AuthValidator.NAME_AUTH_COOKIE, extract to common module
     public static final String NAME_AUTH_COOKIE = "authCookie";
     public static final String PROP_CLIENT_TIMEOUT = "client.timeout";
     
+    @SuppressWarnings("rawtypes")
     public static final DataBrick EMPTY_DATA_BRICK = new DataBrick() {
         @Override
         public void setAesKey(String aesKey) {
@@ -45,9 +46,8 @@ public abstract class BaseConsumer<T> {
         }
     };
 
-    private final int dataProducerGetDataDelay;
-    private final int clientTimeout;
     private final String dataProducerUrl;
+    private final int clientTimeout;
     private final CloseableHttpClient httpClient;
     
     private final ObjectMapper objectMapper;
@@ -55,17 +55,19 @@ public abstract class BaseConsumer<T> {
     private final AesDecrypter aesDecrypter;
     private final RsaDecrypter rsaDecrypter;
 
+    private final AuthCookieUpdater authCookieUpdater;
     private final String authCookie;
     
-    protected BaseConsumer(Map<String, String> properties, AesDecrypter aesDecrypter, RsaDecrypter rsaDecrypter) {
-        dataProducerGetDataDelay = SECOND * Integer.valueOf(getDataProducerGetDelay(properties));
-        clientTimeout = SECOND * Integer.valueOf(properties.get(PROP_CLIENT_TIMEOUT));
-        dataProducerUrl = getDataProducerUrl(properties);
-        
-        objectMapper = new ObjectMapper();
-        
+    protected BaseConsumer(Map<String, String> properties, AesDecrypter aesDecrypter, RsaDecrypter rsaDecrypter, AuthCookieUpdater authCookieUpdater) {
+        super(properties);
         this.aesDecrypter = aesDecrypter;
         this.rsaDecrypter = rsaDecrypter;
+        this.authCookieUpdater = authCookieUpdater;
+
+        dataProducerUrl = getDataProducerUrl(properties);
+        clientTimeout = SECOND * Integer.valueOf(properties.get(PROP_CLIENT_TIMEOUT));
+        
+        objectMapper = new ObjectMapper();
 
         RequestConfig requestConfig = RequestConfig.custom()
                 .setConnectTimeout(clientTimeout)
@@ -75,29 +77,10 @@ public abstract class BaseConsumer<T> {
         
         authCookie = properties.get(PROP_AUTH_COOKIE);
         
-        System.out.println("Reading data from: " + dataProducerUrl);
+        System.out.println("Consumer [" + getClass().getName() + "] is reading data from: " + dataProducerUrl);
     }
 
-    protected abstract String getDataProducerGetDelay(Map<String, String> properties);
     protected abstract String getDataProducerUrl(Map<String, String> properties);
-    protected abstract void doWork();
-
-    protected void repeatDoWork() {
-        while(true) {
-            try {
-                doWork();
-            } catch(Throwable t) {
-                System.out.println("Error while consuming data: " + t.getMessage());
-                t.printStackTrace();
-            }
-            
-            try {
-                Thread.sleep(dataProducerGetDataDelay);
-            } catch (InterruptedException e) {
-                //just ignore it...
-            }
-        }
-    }
     
     protected DataBrick<T> retrieveData() {
         HttpGet getRequest;
@@ -118,6 +101,9 @@ public abstract class BaseConsumer<T> {
                 System.out.println("Received data from data producer: " + body);
                 dataBrick = objectMapper.readValue(body, new TypeReference<DataBrick<T>>() {});
             }
+            if (responseCode != HttpStatus.SC_OK && responseCode != HttpStatus.SC_NO_CONTENT) {
+                authCookieUpdater.update(authCookie);
+            }
         } catch (IOException e) {
             System.out.println("Error while reading data: " + e.getMessage());
             e.printStackTrace();
@@ -126,11 +112,11 @@ public abstract class BaseConsumer<T> {
         return dataBrick;
     }
     
-    protected BeCommand decryptPayload(DataBrick<T> dataBrick) throws IOException {
+    protected T decryptPayload(DataBrick<T> dataBrick, TypeReference<T> typeReference) throws IOException {
         byte[] aesKey = rsaDecrypter.decrypt(dataBrick.getAesKey().getBytes());
         String decryptedPayload = new String(aesDecrypter.decrypt(dataBrick.getPayload(), aesKey));
         System.out.println("Consumed data after decryption: " + decryptedPayload);
 
-        return objectMapper.readValue(decryptedPayload, BeCommand.class);
+        return objectMapper.readValue(decryptedPayload, typeReference);
     }
 }

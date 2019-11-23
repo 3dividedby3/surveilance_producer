@@ -1,11 +1,11 @@
-package surveilance.fish.security;
+package surveilance.fish.security.base;
 
 import java.security.GeneralSecurityException;
 import java.security.Key;
 
 import javax.crypto.spec.SecretKeySpec;
 
-public abstract class AesSecBase {
+public abstract class BaseAesSec {
 
     public static final String TRANS_AES_CBC_PADDING = "AES/CBC/PKCS5Padding";
     public static final String ALGORITHM_AES = "AES";
