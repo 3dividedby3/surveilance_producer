@@ -28,7 +28,7 @@ public class App {
 
     public static void main(String[] args) throws InterruptedException {
         //sleeping to give the system enough time to initialize the network, otherwise it will fail
-        Thread.sleep(10 * 1000);
+        Thread.sleep(10 * SECOND);
         
         String pathToPropFile = null;
         if (args.length > 0) {
@@ -42,15 +42,16 @@ public class App {
         AuthCookieUpdater authCookieUpdater = new AuthCookieUpdater(properties, new RsaEncrypter(properties.get(RSA_PRIVATE_KEY_ENCODED)), new AesEncrypter(), new AesUtil());
         int authStatusCode = authCookieUpdater.update(properties.get(PROP_AUTH_COOKIE));
         if (authStatusCode != HttpStatus.SC_OK) {
-            System.out.println("!!! Auth cookie could noy be set, stopping");
-            return;
+            System.out.println("!!! Auth cookie could noy be set at start-up, continue as-is");
+            //let it run as-is and let any other service give it a try every time it fails
         }
         
         ImageProducer imageProducer = new ImageProducer(properties
                 , new RsaEncrypter(properties.get(RSA_PRIVATE_KEY_ENCODED))
                 , new AesEncrypter()
                 , new AesUtil()
-                , authCookieUpdater);
+                , authCookieUpdater
+                , new TempHumProcessor());
         imageProducer.start();
         
         new ViewerDataConsumer(properties

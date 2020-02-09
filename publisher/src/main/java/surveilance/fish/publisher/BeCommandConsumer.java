@@ -77,14 +77,14 @@ public class BeCommandConsumer extends BaseConsumer<BeCommand> {
 
     private void leftOperation() throws IOException {
         turnOnGpio(24);
-        waitForExecution(50);
+        waitForExecution(100);
         turnOffGpio(24);
         imageProducer.doWork();
     }
 
     private void rightOperation() throws IOException {
         turnOnGpio(23);
-        waitForExecution(150);
+        waitForExecution(100);
         turnOffGpio(23);
         imageProducer.doWork();
     }
@@ -94,7 +94,7 @@ public class BeCommandConsumer extends BaseConsumer<BeCommand> {
         turnOnGpio(24);
         waitForExecution(100);
         turnOffGpio(24);
-        waitForExecution(140);
+        waitForExecution(100);
         turnOffGpio(23);
         imageProducer.doWork();
     }

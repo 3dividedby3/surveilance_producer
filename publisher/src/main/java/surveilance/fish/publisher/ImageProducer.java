@@ -1,5 +1,9 @@
 package surveilance.fish.publisher;
 
+import java.awt.Color;
+import java.awt.Graphics;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -11,6 +15,8 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
+
+import javax.imageio.ImageIO;
 
 import surveilance.fish.publisher.base.BaseProducer;
 import surveilance.fish.security.AesEncrypter;
@@ -27,12 +33,13 @@ public class ImageProducer extends BaseProducer<byte[]> {
     
     private final Path pathToImagesFolder;
     private String captureImageScript;
+    private TempHumProcessor tempHumProcessor;
 
-
-    public ImageProducer(Map<String, String> properties, RsaEncrypter rsaEncrypter, AesEncrypter aesEncrypter, AesUtil aesUtil, AuthCookieUpdater authCookieUpdater) {
+    public ImageProducer(Map<String, String> properties, RsaEncrypter rsaEncrypter, AesEncrypter aesEncrypter, AesUtil aesUtil, AuthCookieUpdater authCookieUpdater, TempHumProcessor tempHumProcessor) {
         super(properties, rsaEncrypter, aesEncrypter, aesUtil, authCookieUpdater);
         pathToImagesFolder = Paths.get(properties.get(PROP_IMAGES_FOLDER_PATH));
         captureImageScript = properties.get(PROP_CAPTURE_IMAGE_SCRIPT);
+        this.tempHumProcessor = tempHumProcessor;
 
         System.out.println("Reading images from disk location: " + pathToImagesFolder);
     }
@@ -81,7 +88,16 @@ public class ImageProducer extends BaseProducer<byte[]> {
             return null;
         }
         System.out.println("Newest file found: " + newestFile);
-        byte[] rawData = Files.readAllBytes(newestFile.toPath()); 
+        
+        try {
+            byte[] imgDateWithTemp = addTempDataToImage(newestFile);
+            return BASE64_ENCODER.encode(imgDateWithTemp);
+        } catch (IOException exc) {
+            System.out.println("Could not add temperature data to image file");
+            exc.printStackTrace();
+        }
+        
+        byte[] rawData = Files.readAllBytes(newestFile.toPath());
         
         return BASE64_ENCODER.encode(rawData);
     }
@@ -106,4 +122,25 @@ public class ImageProducer extends BaseProducer<byte[]> {
         
         return newestFile;
     }
+
+    private byte[] addTempDataToImage(File imageFile) throws IOException {
+        BufferedImage image = ImageIO.read(imageFile);
+        Graphics graphics = image.getGraphics();
+        
+        graphics.setColor(Color.BLACK);
+        graphics.fillRect(0, 0, 60, 15);
+        
+        graphics.setColor(Color.WHITE);
+        graphics.setFont(graphics.getFont().deriveFont(10f));
+        graphics.drawString(tempHumProcessor.getTempAndHumData(), 1, 10);
+        
+        graphics.dispose();
+        
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        //check com.sun.imageio.plugins.jpeg.JPEG.names for valid names
+        ImageIO.write(image, "jpeg", baos);
+        
+        return baos.toByteArray();
+    }
+
 }
