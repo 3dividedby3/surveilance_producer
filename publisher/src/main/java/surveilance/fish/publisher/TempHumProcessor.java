@@ -15,10 +15,13 @@ public class TempHumProcessor {
     
     public String getTempAndHumData() throws IOException {
         String tempAndHum = NO_TEMP_HUM_DATA;
-        try(Stream<String> linesStream = Files.lines(Paths.get(ARDUINO_USB_LOCATION))) {
-            Optional<String> tempAndHumLine = linesStream.filter(line -> line.startsWith(TEMP_LINE_START)).findFirst();
-            tempAndHum = tempAndHumLine.map(line -> line.substring(TEMP_LINE_START.length())).orElse(NO_TEMP_HUM_DATA);
-        }
+        Stream<String> linesStream = Files.lines(Paths.get(ARDUINO_USB_LOCATION));
+        Optional<String> tempAndHumLine = linesStream
+                .filter(line -> line.startsWith(TEMP_LINE_START))
+                .findFirst();
+        tempAndHum = tempAndHumLine.map(line -> line.substring(TEMP_LINE_START.length())).orElse(NO_TEMP_HUM_DATA);
+        //TODO: find a way to close the stream without blocking for 30 seconds as it does now
+        //linesStream.close();
         System.out.println(new Date() + " - Temperature and humidity: " + tempAndHum);
         
         return tempAndHum;
