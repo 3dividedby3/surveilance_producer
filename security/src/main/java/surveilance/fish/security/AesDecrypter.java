@@ -16,6 +16,9 @@ public class AesDecrypter extends BaseAesSec {
     
     private static final Decoder BASE64_DECODER = Base64.getDecoder();
     
+    /**
+     * throws {@link SecurityException}
+     */
     public byte[] decrypt(String data, byte[] key) {
         byte[] decrypted;
         byte[] decodedData = BASE64_DECODER.decode(data);

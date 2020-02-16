@@ -92,16 +92,16 @@ public abstract class BaseConsumer<T> extends BaseRepeatableTask {
             throw new PublisherException("Cannot create URIBuilder", e);
         }
 
+        @SuppressWarnings("unchecked")
         DataBrick<T> dataBrick = EMPTY_DATA_BRICK;
         try(CloseableHttpResponse response = httpClient.execute(getRequest)) {
-            int responseCode = response.getStatusLine().getStatusCode();
-            System.out.println("Data producer [" + dataProducerUrl + "] responded with: " + responseCode);
-            if (responseCode == HttpStatus.SC_OK) {
+            int statusCode = response.getStatusLine().getStatusCode();
+            System.out.println("Data producer [" + dataProducerUrl + "] responded with: " + statusCode);
+            if (statusCode == HttpStatus.SC_OK) {
                 String body = new BufferedReader(new InputStreamReader(response.getEntity().getContent())).lines().collect(Collectors.joining());
                 System.out.println("Received data from data producer: " + body);
                 dataBrick = objectMapper.readValue(body, new TypeReference<DataBrick<T>>() {});
-            }
-            if (responseCode != HttpStatus.SC_OK && responseCode != HttpStatus.SC_NO_CONTENT) {
+            } else if (statusCode == HttpStatus.SC_UNAUTHORIZED) {
                 authCookieUpdater.update(authCookie);
             }
         } catch (IOException e) {

@@ -14,6 +14,9 @@ public class AesUtil {
     
     private final KeyGenerator keyGenerator;
     
+    /**
+     * throws {@link SecurityException}
+     */
     public AesUtil() {
         try {
             keyGenerator = KeyGenerator.getInstance(ALGORITHM_AES);

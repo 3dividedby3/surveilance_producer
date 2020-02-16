@@ -18,6 +18,9 @@ public class AesEncrypter extends BaseAesSec {
         return encryptAndEncode(data.getBytes(), key);
     }
     
+    /**
+     * throws {@link SecurityException}
+     */
     public byte[] encryptAndEncode(byte[] data, byte[] key) {
         byte[] encrypted;
         byte[] initVector;

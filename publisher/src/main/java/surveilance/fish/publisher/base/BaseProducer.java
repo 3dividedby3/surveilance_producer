@@ -79,7 +79,7 @@ public abstract class BaseProducer<T> extends BaseRepeatableTask {
         String dataBrickJson = objectWriter.writeValueAsString(createDataBrick(dataToProcess));
 //          System.out.println("Sending data to consumer: " + dataBrickJson);
         int statusCode = sendDataToConsumer(dataBrickJson.getBytes());
-        if (statusCode != HttpStatus.SC_OK) {
+        if (statusCode == HttpStatus.SC_UNAUTHORIZED) {
             authCookieUpdater.update(authCookie);
         }
         System.out.println("Consumer responded with: " + statusCode);

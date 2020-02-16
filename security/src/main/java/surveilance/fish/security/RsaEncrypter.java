@@ -14,6 +14,9 @@ public class RsaEncrypter extends BaseRsaSecurity {
         super(encodedKey, isPrivate);
     }
     
+    /**
+     * throws {@link SecurityException}
+     */
     public byte[] encryptAndEncode(byte[] dataToEncrypt) {
         return BASE64_ENCODER.encode(doFinal(dataToEncrypt));
     }
