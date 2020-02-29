@@ -1,7 +1,7 @@
 package surveilance.fish.publisher.base;
 
 import static surveilance.fish.publisher.App.PROP_AUTH_COOKIE;
-import static surveilance.fish.publisher.ViewerDataConsumer.NAME_AUTH_COOKIE;
+import static surveilance.fish.publisher.audit.ViewerDataConsumer.NAME_AUTH_COOKIE;
 import static surveilance.fish.publisher.base.BaseConsumer.PROP_CLIENT_TIMEOUT;
 import static surveilance.fish.publisher.App.SECOND;
 import java.io.IOException;

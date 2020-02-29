@@ -7,6 +7,9 @@ import java.util.Map;
 import org.apache.http.HttpStatus;
 
 import surveilance.fish.persistence.simple.FileSaver;
+import surveilance.fish.publisher.audit.ViewerDataConsumer;
+import surveilance.fish.publisher.sensors.SensorData;
+import surveilance.fish.publisher.sensors.TempHumProcessor;
 import surveilance.fish.security.AesDecrypter;
 import surveilance.fish.security.AesEncrypter;
 import surveilance.fish.security.AesUtil;
@@ -21,8 +24,11 @@ public class App {
 
     public static final String PROP_CLIENT_TIMEOUT = "client.timeout";
     
-    public static final String RSA_PRIVATE_KEY_ENCODED = "rsa.private.key.encoded";
+    public static final String PROP_RSA_PRIVATE_KEY_ENCODED = "rsa.private.key.encoded";
     public static final String DEFAULT_APP_PROPERTIES_PATH = "classpath:/app.properties";
+    
+    public static final String PROP_PERSIST_DATA_FOLDER_PATH = "persist.data.folder.path";
+    public static final String PROP_PERSIST_TEMPHUM_FOLDER_PATH = "persist.temphum.folder.path";
     
     public static final String PROP_AUTH_COOKIE = "auth.cookie";
 
@@ -39,33 +45,38 @@ public class App {
         Map<String, String> properties = (Map)(new PropertiesReader().readProperties(pathToPropFile));
         System.out.println("Starting image producer with properties: " + properties);
 
-        AuthCookieUpdater authCookieUpdater = new AuthCookieUpdater(properties, new RsaEncrypter(properties.get(RSA_PRIVATE_KEY_ENCODED)), new AesEncrypter(), new AesUtil());
+        AuthCookieUpdater authCookieUpdater = new AuthCookieUpdater(properties, new RsaEncrypter(properties.get(PROP_RSA_PRIVATE_KEY_ENCODED)), new AesEncrypter(), new AesUtil());
         int authStatusCode = authCookieUpdater.update(properties.get(PROP_AUTH_COOKIE));
         if (authStatusCode != HttpStatus.SC_OK) {
             System.out.println("!!! Auth cookie could noy be set at start-up, continue as-is");
             //let it run as-is and let any other service give it a try every time it fails
         }
         
+        FileSaver<SensorData> sensorDataFileSaver = new FileSaver<>(properties.get(PROP_PERSIST_TEMPHUM_FOLDER_PATH));
         ImageProducer imageProducer = new ImageProducer(properties
-                , new RsaEncrypter(properties.get(RSA_PRIVATE_KEY_ENCODED))
+                , new RsaEncrypter(properties.get(PROP_RSA_PRIVATE_KEY_ENCODED))
                 , new AesEncrypter()
                 , new AesUtil()
                 , authCookieUpdater
-                , new TempHumProcessor());
+                , sensorDataFileSaver);
         imageProducer.start();
         
         new ViewerDataConsumer(properties
                 , new AesDecrypter()
-                , new RsaDecrypter(properties.get(RSA_PRIVATE_KEY_ENCODED), true)
-                , new FileSaver(properties.get("persist.data.folder.path"))
+                , new RsaDecrypter(properties.get(PROP_RSA_PRIVATE_KEY_ENCODED), true)
+                , new FileSaver<>(properties.get(PROP_PERSIST_DATA_FOLDER_PATH))
                 , authCookieUpdater)
             .start();
         
         new BeCommandConsumer(properties
                 , new AesDecrypter()
-                , new RsaDecrypter(properties.get(RSA_PRIVATE_KEY_ENCODED), true)
+                , new RsaDecrypter(properties.get(PROP_RSA_PRIVATE_KEY_ENCODED), true)
                 , imageProducer
                 , authCookieUpdater)
+            .start();
+        
+        new TempHumProcessor(properties
+                , sensorDataFileSaver)
             .start();
         
         System.out.println("Application started from: " + BASE_PATH);

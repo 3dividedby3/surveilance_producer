@@ -1,8 +1,8 @@
-package surveilance.fish.publisher;
+package surveilance.fish.publisher.audit;
 
 import static org.junit.Assert.assertTrue;
 import static surveilance.fish.publisher.App.PROP_CLIENT_TIMEOUT;
-import static surveilance.fish.publisher.ViewerDataConsumer.PROP_DATA_PRODUCER_GET_DATA_DELAY;
+import static surveilance.fish.publisher.audit.ViewerDataConsumer.PROP_DATA_PRODUCER_GET_DATA_DELAY;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -12,9 +12,14 @@ import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+
 import surveilance.fish.model.DataBrick;
 import surveilance.fish.model.ViewerData;
 import surveilance.fish.persistence.api.DataAccessor;
+import surveilance.fish.publisher.AuthCookieUpdater;
+import surveilance.fish.publisher.audit.AuditData;
+import surveilance.fish.publisher.audit.ViewerDataConsumer;
 import surveilance.fish.security.AesDecrypter;
 import surveilance.fish.security.AesEncrypter;
 import surveilance.fish.security.AesUtil;
@@ -36,14 +41,19 @@ public class ViewerDataConsumerTest {
         AesDecrypter aesDecrypter = new AesDecrypter();
         AesEncrypter aesEncrypter = new AesEncrypter();
         RsaDecrypter rsaDecrypter = new RsaDecrypter("MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDsjHdO49slqJoXQI6CLPHX6rtuZrmF4ddFSu4F42IEZs1152QOxXdyNvdh/4jRO1CS9DJsjvF9qG9uXvCCco5LHFIrurrKPKBhI4W8kTGo5dHEHGuR1YJK2O3vrfezcA441tgI+jR93LVasFps+CwNE5nohOQBMr+7f2B6dDzVOwIDAQAB");
-        DataAccessor<ViewerData> dataAccesor = new DataAccessor<ViewerData>() {
+        DataAccessor<AuditData> dataAccesor = new DataAccessor<AuditData>() {
             @Override
-            public List<ViewerData> getData(int id) {
+            public AuditData getNewestData(TypeReference<AuditData> typeReference) throws IOException {
                 // TODO Auto-generated method stub
                 return null;
             }
             @Override
-            public void saveData(ViewerData data) throws IOException {
+            public List<AuditData> getData(int id) {
+                // TODO Auto-generated method stub
+                return null;
+            }
+            @Override
+            public void saveData(AuditData data) throws IOException {
                 dataSaved = true;
             }
         };

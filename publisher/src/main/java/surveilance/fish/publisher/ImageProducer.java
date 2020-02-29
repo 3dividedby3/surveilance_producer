@@ -18,7 +18,11 @@ import java.util.stream.Stream;
 
 import javax.imageio.ImageIO;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+
+import surveilance.fish.persistence.api.DataAccessor;
 import surveilance.fish.publisher.base.BaseProducer;
+import surveilance.fish.publisher.sensors.SensorData;
 import surveilance.fish.security.AesEncrypter;
 import surveilance.fish.security.AesUtil;
 import surveilance.fish.security.RsaEncrypter;
@@ -33,13 +37,14 @@ public class ImageProducer extends BaseProducer<byte[]> {
     
     private final Path pathToImagesFolder;
     private String captureImageScript;
-    private TempHumProcessor tempHumProcessor;
+    private final DataAccessor<SensorData> dataAccessor;
 
-    public ImageProducer(Map<String, String> properties, RsaEncrypter rsaEncrypter, AesEncrypter aesEncrypter, AesUtil aesUtil, AuthCookieUpdater authCookieUpdater, TempHumProcessor tempHumProcessor) {
+    public ImageProducer(Map<String, String> properties, RsaEncrypter rsaEncrypter, AesEncrypter aesEncrypter
+            , AesUtil aesUtil, AuthCookieUpdater authCookieUpdater, DataAccessor<SensorData> dataAccessor) {
         super(properties, rsaEncrypter, aesEncrypter, aesUtil, authCookieUpdater);
         pathToImagesFolder = Paths.get(properties.get(PROP_IMAGES_FOLDER_PATH));
         captureImageScript = properties.get(PROP_CAPTURE_IMAGE_SCRIPT);
-        this.tempHumProcessor = tempHumProcessor;
+        this.dataAccessor = dataAccessor;
 
         System.out.println("Reading images from disk location: " + pathToImagesFolder);
     }
@@ -93,7 +98,7 @@ public class ImageProducer extends BaseProducer<byte[]> {
             byte[] imgDateWithTemp = addTempDataToImage(newestFile);
             return BASE64_ENCODER.encode(imgDateWithTemp);
         } catch (IOException exc) {
-            System.out.println("Could not add temperature data to image file");
+            System.out.println("Could not add temperature data to image");
             exc.printStackTrace();
         }
         
@@ -117,7 +122,7 @@ public class ImageProducer extends BaseProducer<byte[]> {
                         newestFile = currentFile;
                     }
                 }
-            }    
+            }
         }
         
         return newestFile;
@@ -132,7 +137,9 @@ public class ImageProducer extends BaseProducer<byte[]> {
         
         graphics.setColor(Color.WHITE);
         graphics.setFont(graphics.getFont().deriveFont(10f));
-        graphics.drawString(tempHumProcessor.getTempAndHumData(), 1, 10);
+        SensorData sensorData = dataAccessor.getNewestData(new TypeReference<SensorData>() {});
+        //27 *C, 57 H
+        graphics.drawString(sensorData.getTemperature() + " *C, " + sensorData.getHumidity() + " H", 1, 10);
         
         graphics.dispose();
         
