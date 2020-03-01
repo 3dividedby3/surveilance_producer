@@ -43,12 +43,7 @@ public class ViewerDataConsumerTest {
         RsaDecrypter rsaDecrypter = new RsaDecrypter("MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDsjHdO49slqJoXQI6CLPHX6rtuZrmF4ddFSu4F42IEZs1152QOxXdyNvdh/4jRO1CS9DJsjvF9qG9uXvCCco5LHFIrurrKPKBhI4W8kTGo5dHEHGuR1YJK2O3vrfezcA441tgI+jR93LVasFps+CwNE5nohOQBMr+7f2B6dDzVOwIDAQAB");
         DataAccessor<AuditData> dataAccesor = new DataAccessor<AuditData>() {
             @Override
-            public AuditData getNewestData(TypeReference<AuditData> typeReference) throws IOException {
-                // TODO Auto-generated method stub
-                return null;
-            }
-            @Override
-            public List<AuditData> getData(int id) {
+            public List<AuditData> getLastNoOfElems(int noOfElem, TypeReference<AuditData> typeReference) {
                 // TODO Auto-generated method stub
                 return null;
             }

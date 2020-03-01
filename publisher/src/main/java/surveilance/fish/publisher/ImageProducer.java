@@ -12,8 +12,10 @@ import java.nio.file.Paths;
 import java.util.Base64;
 import java.util.Base64.Encoder;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import javax.imageio.ImageIO;
@@ -32,6 +34,9 @@ public class ImageProducer extends BaseProducer<byte[]> {
     public static final String PROP_SEND_IMAGE_DELAY = "send.image.delay";
     public static final String PROP_CONSUMER_URL = "consumer.url";
     public static final String PROP_IMAGES_FOLDER_PATH = "images.folder.path";
+
+    //TODO: same as surveilance.fish.business.UIServlet.BODY_ITEM_SEPARATOR, extract to commmon module
+    public static final String BODY_ITEM_SEPARATOR = ";";
     
     private static final Encoder BASE64_ENCODER = Base64.getEncoder();
     
@@ -63,12 +68,42 @@ public class ImageProducer extends BaseProducer<byte[]> {
     protected void doWork() throws IOException {
         captureImage();
         byte[] imageData = getNewestImageData();
+        String tempAndHumidDataToDisplay = getTempAndHumidDataToDisplay();
+        imageData = addArrays(imageData, (BODY_ITEM_SEPARATOR + tempAndHumidDataToDisplay).getBytes());
         if (imageData == null) {
             return;
         }
         processData(imageData);
     }
     
+    private String getTempAndHumidDataToDisplay() throws IOException  {
+        List<SensorData> sensorData = dataAccessor.getLastNoOfElems(25, new TypeReference<SensorData>() {});
+        List<String> temperatures = sensorData.stream().map(sensorItem -> String.valueOf(sensorItem.getTemperature())).collect(Collectors.toList());
+        //add one more item to have a line to draw
+        if (temperatures.size() == 1) {
+            temperatures.add(temperatures.get(0));
+        }
+        List<String> humidities = sensorData.stream().map(sensorItem -> String.valueOf(sensorItem.getHumidity())).collect(Collectors.toList());
+        if (humidities.size() == 1) {
+            humidities.add(humidities.get(0));
+        }
+        
+        return String.join(",", temperatures) + BODY_ITEM_SEPARATOR + String.join(",", humidities);
+    }
+    
+    //TODO: copied from surveilance.fish.security.AesEncrypter.addArrays, replace in both places with org.eclipse.jetty.util.ArrayUtil
+    private byte[] addArrays(byte[] first, byte[] second) {
+        byte[] result = new byte[first.length + second.length];
+        for (int i = 0 ; i < first.length; ++i) {
+            result[i] = first[i];
+        }
+        for (int i = 0 ; i < second.length; ++i) {
+            result[first.length + i] = second[i];
+        }
+        
+        return result;
+    }
+
     private void captureImage() {
         Process p;
         try {
@@ -137,9 +172,9 @@ public class ImageProducer extends BaseProducer<byte[]> {
         
         graphics.setColor(Color.WHITE);
         graphics.setFont(graphics.getFont().deriveFont(10f));
-        SensorData sensorData = dataAccessor.getNewestData(new TypeReference<SensorData>() {});
+        List<SensorData> sensorData = dataAccessor.getLastNoOfElems(1, new TypeReference<SensorData>() {});
         //27 *C, 57 H
-        graphics.drawString(sensorData.getTemperature() + " *C, " + sensorData.getHumidity() + " H", 1, 10);
+        graphics.drawString(sensorData.get(0).getTemperature() + " *C, " + sensorData.get(0).getHumidity() + " H", 1, 10);
         
         graphics.dispose();
         
