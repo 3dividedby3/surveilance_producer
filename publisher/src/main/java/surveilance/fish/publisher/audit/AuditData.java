@@ -5,6 +5,7 @@ import java.util.Map;
 
 import surveilance.fish.persistence.api.BaseData;
 
+// Check surveilance.fish.model.ViewerData
 public class AuditData extends BaseData {
     
     private Map<String, List<String>> headers;

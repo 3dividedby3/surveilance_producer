@@ -1,9 +1,9 @@
 package surveilance.fish.publisher.base;
 
 import static surveilance.fish.publisher.App.PROP_AUTH_COOKIE;
-import static surveilance.fish.publisher.audit.ViewerDataConsumer.NAME_AUTH_COOKIE;
+import static surveilance.fish.publisher.base.BaseConsumer.NAME_AUTH_COOKIE;
 import static surveilance.fish.publisher.base.BaseConsumer.PROP_CLIENT_TIMEOUT;
-import static surveilance.fish.publisher.App.SECOND;
+
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Map;
@@ -25,9 +25,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 
+import surveilance.fish.common.base.BaseRepeatableTask;
+import surveilance.fish.common.exc.SurveilanecException;
 import surveilance.fish.model.DataBrick;
 import surveilance.fish.publisher.AuthCookieUpdater;
-import surveilance.fish.publisher.PublisherException;
 import surveilance.fish.security.AesEncrypter;
 import surveilance.fish.security.AesUtil;
 import surveilance.fish.security.RsaEncrypter;
@@ -82,7 +83,7 @@ public abstract class BaseProducer<T> extends BaseRepeatableTask {
         if (statusCode == HttpStatus.SC_UNAUTHORIZED) {
             authCookieUpdater.update(authCookie);
         }
-        System.out.println("Consumer responded with: " + statusCode);
+        System.out.println("Consumer [" + dataConsumerUrl + "] responded with: " + statusCode);
     }
 
     private DataBrick<T> createDataBrick(T payload) {
@@ -97,7 +98,7 @@ public abstract class BaseProducer<T> extends BaseRepeatableTask {
                 payloadString = objectWriter.writeValueAsString(payload);
             } catch (JsonProcessingException e) {
                 e.printStackTrace();
-                throw new PublisherException("Cannot write payload as string", e);
+                throw new SurveilanecException("Cannot write payload as string", e);
             }
         }
         dataBrick.setAesKey(rsaEncrypter.encryptAndEncode(key));
@@ -113,7 +114,7 @@ public abstract class BaseProducer<T> extends BaseRepeatableTask {
             builder.setParameter(NAME_AUTH_COOKIE, authCookie);
             putRequest = new HttpPut(builder.build());
         } catch (URISyntaxException e) {
-            throw new PublisherException("Cannot create URIBuilder", e);
+            throw new SurveilanecException("Cannot create URIBuilder", e);
         }
 
         putRequest.addHeader(new BasicHeader(HTTP.CONTENT_TYPE, ContentType.APPLICATION_JSON.toString()));

@@ -1,7 +1,6 @@
 package surveilance.fish.publisher.base;
 
 import static surveilance.fish.publisher.App.PROP_AUTH_COOKIE;
-import static surveilance.fish.publisher.App.SECOND;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -21,9 +20,10 @@ import org.apache.http.impl.client.HttpClientBuilder;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import surveilance.fish.common.base.BaseRepeatableTask;
+import surveilance.fish.common.exc.SurveilanecException;
 import surveilance.fish.model.DataBrick;
 import surveilance.fish.publisher.AuthCookieUpdater;
-import surveilance.fish.publisher.PublisherException;
 import surveilance.fish.security.AesDecrypter;
 import surveilance.fish.security.RsaDecrypter;
 
@@ -89,7 +89,7 @@ public abstract class BaseConsumer<T> extends BaseRepeatableTask {
             builder.setParameter(NAME_AUTH_COOKIE, authCookie);
             getRequest = new HttpGet(builder.build());
         } catch (URISyntaxException e) {
-            throw new PublisherException("Cannot create URIBuilder", e);
+            throw new SurveilanecException("Cannot create URIBuilder", e);
         }
 
         @SuppressWarnings("unchecked")
@@ -115,7 +115,7 @@ public abstract class BaseConsumer<T> extends BaseRepeatableTask {
     protected T decryptPayload(DataBrick<T> dataBrick, TypeReference<T> typeReference) throws IOException {
         byte[] aesKey = rsaDecrypter.decrypt(dataBrick.getAesKey().getBytes());
         String decryptedPayload = new String(aesDecrypter.decrypt(dataBrick.getPayload(), aesKey));
-        System.out.println("Consumed data after decryption: " + decryptedPayload);
+        System.out.println("Consumed data from [" + dataProducerUrl + "] after decryption: " + decryptedPayload);
 
         return objectMapper.readValue(decryptedPayload, typeReference);
     }

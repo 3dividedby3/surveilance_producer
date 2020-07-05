@@ -10,15 +10,17 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
+import java.util.Collection;
+import java.util.Deque;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 
+import surveilance.fish.common.FixedSizeArrayDeque;
 import surveilance.fish.persistence.api.BaseData;
 import surveilance.fish.persistence.api.DataAccessException;
 import surveilance.fish.persistence.api.DataAccessor;
@@ -26,6 +28,7 @@ import surveilance.fish.persistence.api.DataAccessor;
 public class FileSaver<T extends BaseData> implements DataAccessor<T> {
 
     public static final String INDEX_CONTENT_SEPARATOR = " - ";
+    
     private static final DateTimeFormatter FORMAT_DD_MM_YYYY_HH_MM_SS = DateTimeFormatter.ofPattern("dd-MM-yyyy-HH-mm-ss").withZone(ZoneId.of("UTC"));
     private static final String INDEX_FILE_NAME = "index.txt";
 
@@ -41,12 +44,9 @@ public class FileSaver<T extends BaseData> implements DataAccessor<T> {
     }
 
     @Override
-    public synchronized List<T> getLastNoOfElems(int noOfElems, TypeReference<T> typeReference) throws IOException {
-        List<String> itemsSorted = getItemsSorted();
-        noOfElems = noOfElems > itemsSorted.size() ? itemsSorted.size() : noOfElems;
-        List<String> onlyNeededItems = itemsSorted.subList(itemsSorted.size() - noOfElems, itemsSorted.size());
-
-        List<T> itemsParsed = onlyNeededItems.stream().filter(item -> !"".equals(item)).map(item -> {
+    public synchronized List<T> getLastNoOfElems(int noOfElems, TypeReference<T> typeReference) throws DataAccessException {
+        Collection<String> lastItems = getLastNoOfItems(noOfElems);
+        List<T> itemsParsed = lastItems.stream().filter(item -> !"".equals(item)).map(item -> {
                     Path itemPath = extractPath(item);
                     try {
                         return readValueFromPath(typeReference, itemPath);
@@ -59,12 +59,17 @@ public class FileSaver<T extends BaseData> implements DataAccessor<T> {
     }
 
     @Override
-    public synchronized void saveData(T data) throws IOException {
+    public synchronized void saveData(T data) throws DataAccessException {
         String dateCreated = FORMAT_DD_MM_YYYY_HH_MM_SS.format(Instant.ofEpochMilli(data.getTimestampCreated()));
         String fileName = data.getTimestampCreated() + "_" + dateCreated + ".json";
-        byte[] dataContent = objectWriter.writeValueAsString(data).getBytes();
-        Path fullLocation = createDirsAndSaveData(data.getTimestampCreated(), fileName, dataContent);
-        appendFileNameToIndex(fullLocation, data.getTimestampCreated());
+        byte[] dataContent;
+        try {
+            dataContent = objectWriter.writeValueAsString(data).getBytes();
+            Path fullLocation = createDirsAndSaveData(data.getTimestampCreated(), fileName, dataContent);
+            appendFileNameToIndex(fullLocation, data.getTimestampCreated());
+        } catch (IOException e) {
+            throw new DataAccessException("FileSaver to [" + saveLocationPath + "] could not save data", e);
+        }
     }
 
     private T readValueFromPath(TypeReference<T> typeReference, Path path) throws IOException {
@@ -91,13 +96,17 @@ public class FileSaver<T extends BaseData> implements DataAccessor<T> {
         
         return fullLocation;
     }
+    
+    private Collection<String> getLastNoOfItems(int noOfItems) throws DataAccessException {
+        Deque<String> lastItemsDeque = new FixedSizeArrayDeque<>(noOfItems);
+        try {
+            Files.lines(Paths.get(saveLocationPath, INDEX_FILE_NAME)).forEach(value -> lastItemsDeque.add(value));
+        } catch (IOException e) {
+            throw new DataAccessException("FileSaver to [" + saveLocationPath + "] could not read data", e);
+        }
 
-    private List<String> getItemsSorted() throws IOException {
-        Stream<String> sortedLinesStream = Files.lines(Paths.get(saveLocationPath, INDEX_FILE_NAME)).sorted();
-        List<String> lines = sortedLinesStream.collect(Collectors.toList());
-        sortedLinesStream.close();
         
-        return lines;
+        return lastItemsDeque;
     }
 
     private Path extractPath(String lastItem) {

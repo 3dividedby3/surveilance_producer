@@ -1,31 +1,36 @@
 package surveilance.fish.publisher;
 
+import static surveilance.fish.common.PropertiesReader.DEFAULT_APP_PROPERTIES_PATH;
+import static surveilance.fish.common.base.BaseRepeatableTask.SECOND;
+import static surveilance.fish.server.SupportServer.PROP_SUPPORT_SERVER_PORT;
+import static surveilance.fish.server.SupportServer.PROP_SUPPORT_SERVER_TEMPHUM_LOCATION;
+
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
 
 import org.apache.http.HttpStatus;
 
+import surveilance.fish.common.PropertiesReader;
 import surveilance.fish.persistence.simple.FileSaver;
 import surveilance.fish.publisher.audit.ViewerDataConsumer;
-import surveilance.fish.publisher.sensors.SensorData;
-import surveilance.fish.publisher.sensors.TempHumProcessor;
+import surveilance.fish.publisher.sensor.TempHumProcessor;
 import surveilance.fish.security.AesDecrypter;
 import surveilance.fish.security.AesEncrypter;
 import surveilance.fish.security.AesUtil;
 import surveilance.fish.security.RsaDecrypter;
 import surveilance.fish.security.RsaEncrypter;
+import surveilance.fish.server.SensorFileSaver;
+import surveilance.fish.server.SupportServer;
+import surveilance.fish.server.sensor.SensorData;
 
 public class App {
-
-    public static final int SECOND = 1000;
     
     private static final Path BASE_PATH = Paths.get(System.getProperty("user.dir"));
 
     public static final String PROP_CLIENT_TIMEOUT = "client.timeout";
     
     public static final String PROP_RSA_PRIVATE_KEY_ENCODED = "rsa.private.key.encoded";
-    public static final String DEFAULT_APP_PROPERTIES_PATH = "classpath:/app.properties";
     
     public static final String PROP_PERSIST_DATA_FOLDER_PATH = "persist.data.folder.path";
     public static final String PROP_PERSIST_TEMPHUM_FOLDER_PATH = "persist.temphum.folder.path";
@@ -33,7 +38,8 @@ public class App {
     public static final String PROP_AUTH_COOKIE = "auth.cookie";
 
     public static void main(String[] args) throws InterruptedException {
-        //sleeping to give the system enough time to initialize the network, otherwise it will fail
+        //since this application is started from cron when the system boots, it needs to
+        //sleep to give the system enough time to initialize the network, otherwise it will fail
         Thread.sleep(10 * SECOND);
         
         String pathToPropFile = null;
@@ -43,22 +49,30 @@ public class App {
             pathToPropFile = DEFAULT_APP_PROPERTIES_PATH;
         }
         Map<String, String> properties = (Map)(new PropertiesReader().readProperties(pathToPropFile));
-        System.out.println("Starting image producer with properties: " + properties);
+        System.out.println("[publisher] Starting with properties: " + properties);
+
+        FileSaver<SensorData> localSensorDataFileSaver 
+            = new FileSaver<>(properties.get(PROP_PERSIST_TEMPHUM_FOLDER_PATH));
+        SensorFileSaver remoteOneSensorFileSaver 
+            = new SensorFileSaver("remoteone", properties.get(PROP_SUPPORT_SERVER_TEMPHUM_LOCATION) + "temphum/remoteone");
+
+        new SupportServer(Integer.valueOf(properties.get(PROP_SUPPORT_SERVER_PORT)), remoteOneSensorFileSaver)
+            .start();
 
         AuthCookieUpdater authCookieUpdater = new AuthCookieUpdater(properties, new RsaEncrypter(properties.get(PROP_RSA_PRIVATE_KEY_ENCODED)), new AesEncrypter(), new AesUtil());
         int authStatusCode = authCookieUpdater.update(properties.get(PROP_AUTH_COOKIE));
         if (authStatusCode != HttpStatus.SC_OK) {
-            System.out.println("!!! Auth cookie could noy be set at start-up, continue as-is");
             //let it run as-is and let any other service give it a try every time it fails
+            System.out.println("!!! Auth cookie could noy be set at start-up, continue as-is");
         }
         
-        FileSaver<SensorData> sensorDataFileSaver = new FileSaver<>(properties.get(PROP_PERSIST_TEMPHUM_FOLDER_PATH));
         ImageProducer imageProducer = new ImageProducer(properties
                 , new RsaEncrypter(properties.get(PROP_RSA_PRIVATE_KEY_ENCODED))
                 , new AesEncrypter()
                 , new AesUtil()
                 , authCookieUpdater
-                , sensorDataFileSaver);
+                , localSensorDataFileSaver
+                , remoteOneSensorFileSaver);
         imageProducer.start();
         
         new ViewerDataConsumer(properties
@@ -76,10 +90,10 @@ public class App {
             .start();
         
         new TempHumProcessor(properties
-                , sensorDataFileSaver)
+                , localSensorDataFileSaver)
             .start();
         
-        System.out.println("Application started from: " + BASE_PATH);
+        System.out.println("[publisher] Application started from: " + BASE_PATH);
 
         Thread.currentThread().join();
     }

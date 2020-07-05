@@ -1,4 +1,4 @@
-package surveilance.fish.publisher.sensors;
+package surveilance.fish.server.sensor;
 
 import surveilance.fish.persistence.api.BaseData;
 
@@ -9,10 +9,10 @@ public class SensorData extends BaseData {
     
     /** in percentage 0 - 100% */
     private int humidity;
-    
+
+    //made for jackson
     public SensorData() {
         super(null);
-        //made for jackson
     }
     
     public SensorData(long created, int temperature, int humidity) {

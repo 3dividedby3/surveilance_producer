@@ -10,4 +10,8 @@ public class DataAccessException extends RuntimeException {
     public DataAccessException(Throwable source) {
         super(source);
     }
+    
+    public DataAccessException(String message, Throwable source) {
+        super(message, source);
+    }
 }

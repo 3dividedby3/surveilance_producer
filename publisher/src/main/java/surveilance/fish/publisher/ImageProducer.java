@@ -24,32 +24,40 @@ import com.fasterxml.jackson.core.type.TypeReference;
 
 import surveilance.fish.persistence.api.DataAccessor;
 import surveilance.fish.publisher.base.BaseProducer;
-import surveilance.fish.publisher.sensors.SensorData;
 import surveilance.fish.security.AesEncrypter;
 import surveilance.fish.security.AesUtil;
 import surveilance.fish.security.RsaEncrypter;
+import surveilance.fish.server.SensorFileSaver;
+import surveilance.fish.server.sensor.SensorData;
 
 public class ImageProducer extends BaseProducer<byte[]> {
     public static final String PROP_CAPTURE_IMAGE_SCRIPT = "capture.image.script";
     public static final String PROP_SEND_IMAGE_DELAY = "send.image.delay";
     public static final String PROP_CONSUMER_URL = "consumer.url";
     public static final String PROP_IMAGES_FOLDER_PATH = "images.folder.path";
+    public static final String PROP_TEMP_AND_HUMID_ITEMS_DISPLAYNO = "temphum.items.displayno";
 
-    //TODO: same as surveilance.fish.business.UIServlet.BODY_ITEM_SEPARATOR, extract to commmon module
+    //TODO: same as surveilance.fish.business.UIServlet.BODY_ITEM_SEPARATOR, extract to common module
     public static final String BODY_ITEM_SEPARATOR = ";";
     
     private static final Encoder BASE64_ENCODER = Base64.getEncoder();
     
     private final Path pathToImagesFolder;
     private String captureImageScript;
+    private int noOfTempAndHumid; 
+    
     private final DataAccessor<SensorData> dataAccessor;
+    private final SensorFileSaver remoteOneSensorFileSaver;
 
     public ImageProducer(Map<String, String> properties, RsaEncrypter rsaEncrypter, AesEncrypter aesEncrypter
-            , AesUtil aesUtil, AuthCookieUpdater authCookieUpdater, DataAccessor<SensorData> dataAccessor) {
+            , AesUtil aesUtil, AuthCookieUpdater authCookieUpdater, DataAccessor<SensorData> dataAccessor
+            , SensorFileSaver remoteOneSensorFileSaver) {
         super(properties, rsaEncrypter, aesEncrypter, aesUtil, authCookieUpdater);
         pathToImagesFolder = Paths.get(properties.get(PROP_IMAGES_FOLDER_PATH));
         captureImageScript = properties.get(PROP_CAPTURE_IMAGE_SCRIPT);
+        noOfTempAndHumid = Integer.valueOf(properties.get(PROP_TEMP_AND_HUMID_ITEMS_DISPLAYNO));
         this.dataAccessor = dataAccessor;
+        this.remoteOneSensorFileSaver = remoteOneSensorFileSaver;
 
         System.out.println("Reading images from disk location: " + pathToImagesFolder);
     }
@@ -68,22 +76,25 @@ public class ImageProducer extends BaseProducer<byte[]> {
     protected void doWork() throws IOException {
         captureImage();
         byte[] imageData = getNewestImageData();
-        String tempAndHumidDataToDisplay = getTempAndHumidDataToDisplay();
-        imageData = addArrays(imageData, (BODY_ITEM_SEPARATOR + tempAndHumidDataToDisplay).getBytes());
+        String tempAndHumidDataToDisplay1 
+            = getTempAndHumidDataToDisplay(dataAccessor.getLastNoOfElems(noOfTempAndHumid, new TypeReference<SensorData>() {}));
+        String tempAndHumidDataToDisplay2 
+            = getTempAndHumidDataToDisplay(remoteOneSensorFileSaver.getLastNoOfElems(noOfTempAndHumid, new TypeReference<SensorData>() {}));
+        imageData 
+            = addArrays(imageData, (BODY_ITEM_SEPARATOR + tempAndHumidDataToDisplay1 + BODY_ITEM_SEPARATOR + tempAndHumidDataToDisplay2).getBytes());
         if (imageData == null) {
             return;
         }
         processData(imageData);
     }
     
-    private String getTempAndHumidDataToDisplay() throws IOException  {
-        List<SensorData> sensorData = dataAccessor.getLastNoOfElems(25, new TypeReference<SensorData>() {});
-        List<String> temperatures = sensorData.stream().map(sensorItem -> String.valueOf(sensorItem.getTemperature())).collect(Collectors.toList());
+    private String getTempAndHumidDataToDisplay(List<SensorData> listSensorData) throws IOException  {
+        List<String> temperatures = listSensorData.stream().map(sensorItem -> String.valueOf(sensorItem.getTemperature())).collect(Collectors.toList());
         //add one more item to have a line to draw
         if (temperatures.size() == 1) {
             temperatures.add(temperatures.get(0));
         }
-        List<String> humidities = sensorData.stream().map(sensorItem -> String.valueOf(sensorItem.getHumidity())).collect(Collectors.toList());
+        List<String> humidities = listSensorData.stream().map(sensorItem -> String.valueOf(sensorItem.getHumidity())).collect(Collectors.toList());
         if (humidities.size() == 1) {
             humidities.add(humidities.get(0));
         }

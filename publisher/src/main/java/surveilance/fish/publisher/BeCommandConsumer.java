@@ -17,12 +17,15 @@ public class BeCommandConsumer extends BaseConsumer<BeCommand> {
 
     public static final String PROP_BE_COMMAND_PRODUCER_GET_DATA_DELAY = "be.command.producer.get.data.delay";
     public static final String PROP_BE_COMMAND_PRODUCER_URL = "be.command.producer.url";
+    public static final String PROP_BE_COMMAND_EXEC_FOR_MS = "be.command.exec.for.ms";
     
     private ImageProducer imageProducer;
+    private int execForMs;
 
     public BeCommandConsumer(Map<String, String> properties, AesDecrypter aesDecrypter, RsaDecrypter rsaDecrypter, ImageProducer imageProducer, AuthCookieUpdater authCookieUpdater) {
         super(properties, aesDecrypter, rsaDecrypter, authCookieUpdater);
         this.imageProducer = imageProducer;
+        execForMs = Integer.valueOf(properties.get(PROP_BE_COMMAND_EXEC_FOR_MS));
     }
 
     @Override
@@ -62,9 +65,10 @@ public class BeCommandConsumer extends BaseConsumer<BeCommand> {
                     case "right":
                         rightOperation();
                         break;
-                    case "forward":
-                        forwardOperation();
-                        break;
+                      //forward operation removed since it causes problems with the new system
+//                    case "forward":
+//                        forwardOperation();
+//                        break;
                     default:
                         System.out.println("Unknown 'go' direction received: " + beCommand.getValue());
                 }
@@ -76,15 +80,17 @@ public class BeCommandConsumer extends BaseConsumer<BeCommand> {
     }
 
     private void leftOperation() throws IOException {
+        turnOffBothGpio();
         turnOnGpio(24);
-        waitForExecution(100);
+        waitForExecution(execForMs);
         turnOffGpio(24);
         imageProducer.doWork();
     }
 
     private void rightOperation() throws IOException {
+        turnOffBothGpio();
         turnOnGpio(23);
-        waitForExecution(100);
+        waitForExecution(execForMs);
         turnOffGpio(23);
         imageProducer.doWork();
     }
@@ -92,9 +98,9 @@ public class BeCommandConsumer extends BaseConsumer<BeCommand> {
     private void forwardOperation() throws IOException {
         turnOnGpio(23);
         turnOnGpio(24);
-        waitForExecution(100);
+        waitForExecution(execForMs);
         turnOffGpio(24);
-        waitForExecution(100);
+        waitForExecution(execForMs);
         turnOffGpio(23);
         imageProducer.doWork();
     }
@@ -121,13 +127,13 @@ public class BeCommandConsumer extends BaseConsumer<BeCommand> {
         try {
             Thread.sleep(delay);
         } catch (InterruptedException e) {
-            stopBothGpio();
+            turnOffBothGpio();
             //nothing more to do
             e.printStackTrace();
         }
     }
     
-    private void stopBothGpio() {
+    private void turnOffBothGpio() {
         turnOffGpio(23);
         turnOffGpio(24);
     }

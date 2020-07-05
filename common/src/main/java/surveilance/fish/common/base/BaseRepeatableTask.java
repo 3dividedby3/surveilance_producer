@@ -1,11 +1,11 @@
-package surveilance.fish.publisher.base;
-
-import static surveilance.fish.publisher.App.SECOND;
+package surveilance.fish.common.base;
 
 import java.io.IOException;
 import java.util.Map;
 
 public abstract class BaseRepeatableTask {
+    
+    public static final int SECOND = 1000;
     
     private final int repeatTaskDelay;
     
@@ -26,7 +26,7 @@ public abstract class BaseRepeatableTask {
             try {
                 doWork();
             } catch(Throwable t) {
-                System.out.println("Error while repeating work: " + t.getMessage());
+                System.out.println(getClass().getName() +" Error while repeating work: " + t.getMessage());
                 t.printStackTrace();
             }
             

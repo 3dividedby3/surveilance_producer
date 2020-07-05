@@ -29,7 +29,7 @@ public class ViewerDataConsumer extends BaseConsumer<List<ViewerData>> {
         
         auditDataMapper = new AuditDataMapper();
 
-        System.out.println("viewer data consumer is saving data to: " + properties.get("persist.data.folder.path"));
+        System.out.println("Viewer data consumer is saving data to: " + properties.get("persist.data.folder.path"));
     }
 
     @Override

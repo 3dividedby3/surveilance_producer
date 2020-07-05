@@ -5,7 +5,7 @@
     <parent>
         <groupId>whisper.fish</groupId>
         <artifactId>support</artifactId>
-        <version>3.0-SNAPSHOT</version>
+        <version>4.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>publisher</artifactId>
@@ -19,6 +19,10 @@
     <dependencies>
         <dependency>
             <groupId>whisper.fish</groupId>
+            <artifactId>common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>whisper.fish</groupId>
             <artifactId>model</artifactId>
         </dependency>
         <dependency>
@@ -30,6 +34,11 @@
             <artifactId>persistance</artifactId>
         </dependency>
         <dependency>
+            <groupId>whisper.fish</groupId>
+            <artifactId>server</artifactId>
+        </dependency>
+        
+        <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
         </dependency>
@@ -37,6 +46,11 @@
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpclient</artifactId>
         </dependency>
+        <dependency>
+	        <groupId>com.pi4j</groupId>
+	        <artifactId>pi4j-core</artifactId>
+        </dependency>
+        
         <!-- test -->
         <dependency>
             <groupId>junit</groupId>

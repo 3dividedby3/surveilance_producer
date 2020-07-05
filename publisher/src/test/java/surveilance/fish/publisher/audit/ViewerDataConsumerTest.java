@@ -16,10 +16,9 @@ import com.fasterxml.jackson.core.type.TypeReference;
 
 import surveilance.fish.model.DataBrick;
 import surveilance.fish.model.ViewerData;
+import surveilance.fish.persistence.api.DataAccessException;
 import surveilance.fish.persistence.api.DataAccessor;
 import surveilance.fish.publisher.AuthCookieUpdater;
-import surveilance.fish.publisher.audit.AuditData;
-import surveilance.fish.publisher.audit.ViewerDataConsumer;
 import surveilance.fish.security.AesDecrypter;
 import surveilance.fish.security.AesEncrypter;
 import surveilance.fish.security.AesUtil;
@@ -48,7 +47,7 @@ public class ViewerDataConsumerTest {
                 return null;
             }
             @Override
-            public void saveData(AuditData data) throws IOException {
+            public void saveData(AuditData data) throws DataAccessException {
                 dataSaved = true;
             }
         };

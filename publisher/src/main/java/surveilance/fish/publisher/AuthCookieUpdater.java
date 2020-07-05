@@ -1,7 +1,7 @@
 package surveilance.fish.publisher;
 
+import static surveilance.fish.common.base.BaseRepeatableTask.SECOND;
 import static surveilance.fish.publisher.App.PROP_CLIENT_TIMEOUT;
-import static surveilance.fish.publisher.App.SECOND;
 
 import java.io.IOException;
 import java.util.Map;
@@ -22,6 +22,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 
+import surveilance.fish.common.exc.SurveilanecException;
 import surveilance.fish.model.DataBrick;
 import surveilance.fish.security.AesEncrypter;
 import surveilance.fish.security.AesUtil;
@@ -88,7 +89,7 @@ public class AuthCookieUpdater {
         try {
             dataBrickJson = objectWriter.writeValueAsString(dataBrick);
         } catch (JsonProcessingException e) {
-            throw new PublisherException("Cannot write data brick as string", e);
+            throw new SurveilanecException("Cannot write data brick as string", e);
         }
         
         return dataBrickJson;

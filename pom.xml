@@ -4,17 +4,18 @@
 
     <groupId>whisper.fish</groupId>
     <artifactId>support</artifactId>
-    <version>3.0-SNAPSHOT</version>
+    <version>4.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>support</name>
-    <url>http://maven.apache.org</url>
 
     <modules>
+		<module>common</module>
         <module>generator</module>
 		<module>security</module>
 		<module>persistance</module>
         <module>publisher</module>
+        <module>server</module>
     </modules>
 
     <properties>
@@ -23,9 +24,11 @@
         <version.maven.compiler.plugin>3.2</version.maven.compiler.plugin>
         <version.appassembler.maven.plugin>2.0.0</version.appassembler.maven.plugin>
         <version.apache.http.client>4.5.3</version.apache.http.client>
-        <version.whisper.fish>1.0-SNAPSHOT</version.whisper.fish>
-        <version.fasterxml.jackson>2.9.10.1</version.fasterxml.jackson>
+        <version.whisper.fish>2.0-SNAPSHOT</version.whisper.fish>
+        <version.fasterxml.jackson>2.10.0</version.fasterxml.jackson>
         <version.junit>4.4</version.junit>
+        <version.jetty>9.4.6.v20170531</version.jetty>
+        <version.pi4j>1.2</version.pi4j>
     </properties>
 
     <dependencyManagement>
@@ -38,27 +41,46 @@
         
             <dependency>
                 <groupId>whisper.fish</groupId>
+                <artifactId>common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>whisper.fish</groupId>
                 <artifactId>security</artifactId>
                 <version>${project.version}</version>
             </dependency>
-            
             <dependency>
                 <groupId>whisper.fish</groupId>
                 <artifactId>persistance</artifactId>
                 <version>${project.version}</version>
             </dependency>
-        
+            <dependency>
+                <groupId>whisper.fish</groupId>
+                <artifactId>server</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            
             <dependency>
 			    <groupId>com.fasterxml.jackson.core</groupId>
 			    <artifactId>jackson-databind</artifactId>
 			    <version>${version.fasterxml.jackson}</version>
 			</dependency>
-        
             <dependency>
                 <groupId>org.apache.httpcomponents</groupId>
                 <artifactId>httpclient</artifactId>
                 <version>${version.apache.http.client}</version>
             </dependency>
+            <dependency>
+                <groupId>org.eclipse.jetty</groupId>
+                <artifactId>jetty-servlet</artifactId>
+                <version>${version.jetty}</version>
+            </dependency>
+            <dependency>
+		        <groupId>com.pi4j</groupId>
+		        <artifactId>pi4j-core</artifactId>
+		        <version>${version.pi4j}</version>
+		    </dependency>
+            
             <!-- test dependencies -->
             <dependency>
                 <groupId>junit</groupId>
