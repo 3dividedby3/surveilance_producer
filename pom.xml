@@ -23,7 +23,7 @@
         <version.java>1.8</version.java>
         <version.maven.compiler.plugin>3.2</version.maven.compiler.plugin>
         <version.appassembler.maven.plugin>2.0.0</version.appassembler.maven.plugin>
-        <version.apache.http.client>4.5.3</version.apache.http.client>
+        <version.apache.http.client>4.5.13</version.apache.http.client>
         <version.whisper.fish>2.0-SNAPSHOT</version.whisper.fish>
         <version.fasterxml.jackson>2.10.0</version.fasterxml.jackson>
         <version.junit>4.4</version.junit>
